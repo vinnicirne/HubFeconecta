@@ -38,6 +38,7 @@ export default function DashboardClient({ initialPosts }: { initialPosts: any[] 
           <NavItem icon={PenTool} label="Criador (Post & Story)" active={activeTab === 'creator'} onClick={() => setActiveTab('creator')} />
           <NavItem icon={BarChart3} label="Analytics & Horários" active={activeTab === 'analytics'} onClick={() => setActiveTab('analytics')} />
           <NavItem icon={MessageSquareText} label="Inbox (CRM)" active={activeTab === 'inbox'} onClick={() => setActiveTab('inbox')} />
+          <NavItem icon={Plus} label="Automações (Robô)" active={activeTab === 'automations'} onClick={() => setActiveTab('automations')} />
         </nav>
 
         <div className="p-4 border-t border-slate-800">
@@ -51,6 +52,7 @@ export default function DashboardClient({ initialPosts }: { initialPosts: any[] 
         {activeTab === 'creator' && <TabCreator />}
         {activeTab === 'analytics' && <TabAnalytics />}
         {activeTab === 'inbox' && <TabInbox />}
+        {activeTab === 'automations' && <TabAutomations />}
       </main>
 
     </div>
@@ -177,6 +179,59 @@ function TabInbox() {
         Essa aba receberá os directs, comentários e mensagens do Messenger em tempo real via Webhooks.
         Requer as permissões <strong className="text-blue-400">pages_messaging</strong> e <strong className="text-blue-400">instagram_manage_messages</strong>.
       </p>
+    </div>
+  );
+}
+
+function TabAutomations() {
+  return (
+    <div className="p-10 max-w-5xl mx-auto space-y-8">
+      <div className="flex justify-between items-end">
+        <div>
+          <h2 className="text-3xl font-bold text-white mb-2">Automações do Robô</h2>
+          <p className="text-slate-400">Configure as palavras-chave que ativarão respostas automáticas no Direct e Comentários.</p>
+        </div>
+        <button className="bg-amber-500 hover:bg-amber-400 text-black font-bold py-2 px-6 rounded-lg shadow-[0_0_15px_rgba(245,158,11,0.3)] transition-all flex items-center gap-2">
+          <Plus size={18} />
+          Nova Regra
+        </button>
+      </div>
+      
+      <div className="bg-[#111116] p-8 rounded-2xl border border-slate-800 shadow-2xl space-y-6">
+        {/* Formulário de Criação Rápida */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-slate-400 mb-2">Se o usuário digitar:</label>
+            <input type="text" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-amber-500" placeholder="ex: quero, me manda, link" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-400 mb-2">Responder no Comentário:</label>
+            <input type="text" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-amber-500" placeholder="ex: Te enviei no direct! ❤️" />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-slate-400 mb-2">E enviar no Direct (Mensagem Privada):</label>
+            <textarea rows={3} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-4 text-white outline-none focus:border-amber-500 resize-none" placeholder="Aqui está o que você pediu: https://link..." />
+          </div>
+        </div>
+        <button className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-lg transition-colors">
+          Salvar Nova Regra
+        </button>
+
+        {/* Lista de Automações Ativas */}
+        <div className="pt-6 border-t border-slate-800 mt-6">
+          <h3 className="text-lg font-bold text-white mb-4">Regras Ativas (Banco de Dados)</h3>
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex justify-between items-center">
+            <div>
+              <p className="text-amber-500 font-bold">Palavra: "quero"</p>
+              <p className="text-sm text-slate-400">Direct: "Olá! Recebemos o seu 'quero'..."</p>
+            </div>
+            <div className="flex gap-2">
+              <span className="bg-green-500/20 text-green-400 text-xs px-2 py-1 rounded-full font-bold">Ativa</span>
+              <button className="text-red-500 hover:text-red-400 p-1"><Trash2 size={16} /></button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

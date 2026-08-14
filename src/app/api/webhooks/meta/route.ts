@@ -44,9 +44,15 @@ export async function POST(req: NextRequest) {
                 message: text,
               });
 
-              // AUTOMAÇÃO DO "QUERO" NO DIRECT (Exemplo de resposta)
-              if (text.toLowerCase().includes('quero')) {
-                await sendDirectReply(senderId, "Olá! Recebemos o seu 'quero'. Aqui está o link: https://hubfeconecta.vercel.app/ 🎉");
+              // AUTOMAÇÃO DINÂMICA VIA PAINEL ADMIN (DIRECT)
+              const { data: automations } = await supabase.from('automations').select('*').eq('is_active', true);
+              if (automations) {
+                for (const auto of automations) {
+                  if (text.toLowerCase().includes(auto.trigger_word.toLowerCase())) {
+                    await sendDirectReply(senderId, auto.dm_reply);
+                    break; // Executa apenas a primeira automação que bater
+                  }
+                }
               }
             }
           }
@@ -63,9 +69,6 @@ export async function POST(req: NextRequest) {
               const postId = comment.media?.id || comment.post_id;
               const commentId = comment.id;
 
-              // Só salvar se não for o próprio dono comentando
-              // (Geralmente a API manda tudo, é bom filtrar)
-
               await supabase.from('inbox_messages').insert({
                 platform,
                 type: 'comment',
@@ -75,13 +78,20 @@ export async function POST(req: NextRequest) {
                 post_id: postId,
               });
 
-              // AUTOMAÇÃO DO "QUERO" NOS COMENTÁRIOS
-              if (text.toLowerCase().includes('quero')) {
-                // 1. Responde o comentário publicamente
-                await replyToComment(commentId, "Te enviei todas as informações no Direct! ❤️");
-                // 2. Envia um direct privado para a pessoa
-                // A API do Instagram permite responder no direct até 24h após um comentário
-                await sendDirectReply(commentId, "Oi! Vi que você comentou 'quero'. Aqui está o seu presente especial! 🎁");
+              // AUTOMAÇÃO DINÂMICA VIA PAINEL ADMIN (COMENTÁRIOS)
+              const { data: automations } = await supabase.from('automations').select('*').eq('is_active', true);
+              if (automations) {
+                for (const auto of automations) {
+                  if (text.toLowerCase().includes(auto.trigger_word.toLowerCase())) {
+                    // 1. Responde o comentário publicamente (se configurado)
+                    if (auto.comment_reply) {
+                      await replyToComment(commentId, auto.comment_reply);
+                    }
+                    // 2. Envia um direct privado para a pessoa
+                    await sendDirectReply(commentId, auto.dm_reply);
+                    break;
+                  }
+                }
               }
             }
           }

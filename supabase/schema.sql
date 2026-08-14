@@ -34,3 +34,16 @@ CREATE TABLE inbox_messages (
 
 ALTER TABLE inbox_messages ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Enable all for anon inbox" ON inbox_messages FOR ALL USING (true);
+
+-- Tabela para gerenciar Automações (O seu "ManyChat")
+CREATE TABLE automations (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  trigger_word TEXT NOT NULL, -- Palavra que ativa o robô (ex: "quero")
+  comment_reply TEXT, -- O que o robô responde no comentário (opcional)
+  dm_reply TEXT NOT NULL, -- O que o robô manda no Direct
+  is_active BOOLEAN DEFAULT true
+);
+
+ALTER TABLE automations ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Enable all for anon automations" ON automations FOR ALL USING (true);
