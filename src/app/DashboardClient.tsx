@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 import { 
   LayoutDashboard, 
   BarChart3, 
@@ -182,9 +183,6 @@ function TabInbox() {
     </div>
   );
 }
-
-import { supabase } from '@/lib/supabase';
-import { useState, useEffect } from 'react';
 
 function TabAutomations() {
   const [automations, setAutomations] = useState<any[]>([]);
