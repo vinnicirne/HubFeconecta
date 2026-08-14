@@ -183,7 +183,50 @@ function TabInbox() {
   );
 }
 
+import { supabase } from '@/lib/supabase';
+import { useState, useEffect } from 'react';
+
 function TabAutomations() {
+  const [automations, setAutomations] = useState<any[]>([]);
+  const [triggerWord, setTriggerWord] = useState('');
+  const [commentReply, setCommentReply] = useState('');
+  const [dmReply, setDmReply] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchAutomations();
+  }, []);
+
+  async function fetchAutomations() {
+    const { data } = await supabase.from('automations').select('*').order('created_at', { ascending: false });
+    if (data) setAutomations(data);
+  }
+
+  async function handleSave() {
+    if (!triggerWord || !dmReply) return alert('A palavra-chave e a mensagem do Direct são obrigatórias!');
+    setLoading(true);
+    
+    await supabase.from('automations').insert({
+      trigger_word: triggerWord,
+      comment_reply: commentReply,
+      dm_reply: dmReply,
+      is_active: true
+    });
+
+    setTriggerWord('');
+    setCommentReply('');
+    setDmReply('');
+    await fetchAutomations();
+    setLoading(false);
+  }
+
+  async function handleDelete(id: string) {
+    if (confirm('Tem certeza que deseja excluir esta regra?')) {
+      await supabase.from('automations').delete().eq('id', id);
+      await fetchAutomations();
+    }
+  }
+
   return (
     <div className="p-10 max-w-5xl mx-auto space-y-8">
       <div className="flex justify-between items-end">
@@ -191,10 +234,6 @@ function TabAutomations() {
           <h2 className="text-3xl font-bold text-white mb-2">Automações do Robô</h2>
           <p className="text-slate-400">Configure as palavras-chave que ativarão respostas automáticas no Direct e Comentários.</p>
         </div>
-        <button className="bg-amber-500 hover:bg-amber-400 text-black font-bold py-2 px-6 rounded-lg shadow-[0_0_15px_rgba(245,158,11,0.3)] transition-all flex items-center gap-2">
-          <Plus size={18} />
-          Nova Regra
-        </button>
       </div>
       
       <div className="bg-[#111116] p-8 rounded-2xl border border-slate-800 shadow-2xl space-y-6">
@@ -202,34 +241,66 @@ function TabAutomations() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-slate-400 mb-2">Se o usuário digitar:</label>
-            <input type="text" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-amber-500" placeholder="ex: quero, me manda, link" />
+            <input 
+              type="text" 
+              value={triggerWord}
+              onChange={e => setTriggerWord(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-amber-500" 
+              placeholder="ex: quero, me manda, amém" 
+            />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-2">Responder no Comentário:</label>
-            <input type="text" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-amber-500" placeholder="ex: Te enviei no direct! ❤️" />
+            <label className="block text-sm font-medium text-slate-400 mb-2">Responder no Comentário (opcional):</label>
+            <input 
+              type="text" 
+              value={commentReply}
+              onChange={e => setCommentReply(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-amber-500" 
+              placeholder="ex: Te enviei no direct! ❤️" 
+            />
           </div>
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-slate-400 mb-2">E enviar no Direct (Mensagem Privada):</label>
-            <textarea rows={3} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-4 text-white outline-none focus:border-amber-500 resize-none" placeholder="Aqui está o que você pediu: https://link..." />
+            <textarea 
+              rows={3} 
+              value={dmReply}
+              onChange={e => setDmReply(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg p-4 text-white outline-none focus:border-amber-500 resize-none" 
+              placeholder="Aqui está o que você pediu: https://link..." 
+            />
           </div>
         </div>
-        <button className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-lg transition-colors">
-          Salvar Nova Regra
+        <button 
+          onClick={handleSave}
+          disabled={loading}
+          className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+        >
+          {loading ? 'Salvando...' : 'Salvar Nova Regra'}
         </button>
 
         {/* Lista de Automações Ativas */}
         <div className="pt-6 border-t border-slate-800 mt-6">
           <h3 className="text-lg font-bold text-white mb-4">Regras Ativas (Banco de Dados)</h3>
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex justify-between items-center">
-            <div>
-              <p className="text-amber-500 font-bold">Palavra: "quero"</p>
-              <p className="text-sm text-slate-400">Direct: "Olá! Recebemos o seu 'quero'..."</p>
+          
+          {automations.length === 0 ? (
+            <p className="text-slate-500 text-sm">Nenhuma regra configurada ainda.</p>
+          ) : (
+            <div className="space-y-4">
+              {automations.map(auto => (
+                <div key={auto.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex justify-between items-center">
+                  <div>
+                    <p className="text-amber-500 font-bold">Palavra: "{auto.trigger_word}"</p>
+                    {auto.comment_reply && <p className="text-sm text-slate-400 mt-1">📝 Comentário: "{auto.comment_reply}"</p>}
+                    <p className="text-sm text-slate-400">💬 Direct: "{auto.dm_reply}"</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="bg-green-500/20 text-green-400 text-xs px-2 py-1 rounded-full font-bold h-fit">Ativa</span>
+                    <button onClick={() => handleDelete(auto.id)} className="text-red-500 hover:text-red-400 p-1 h-fit"><Trash2 size={18} /></button>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="flex gap-2">
-              <span className="bg-green-500/20 text-green-400 text-xs px-2 py-1 rounded-full font-bold">Ativa</span>
-              <button className="text-red-500 hover:text-red-400 p-1"><Trash2 size={16} /></button>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
