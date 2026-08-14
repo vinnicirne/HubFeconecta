@@ -47,14 +47,31 @@ async function postToMeta(imageUrl: string, text: string) {
       const creationId = containerRes?.id;
 
       if (creationId) {
-        console.log("Publicando no Instagram...");
-        const pubReq = await fetch(`https://graph.facebook.com/v20.0/${igId}/media_publish`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ creation_id: creationId, access_token: token })
-        });
-        const pubData = await pubReq.json();
-        if (pubData.error) console.error("Erro Instagram:", pubData.error);
+        console.log("Aguardando o Instagram processar a imagem...");
+        let isReady = false;
+        for (let i = 0; i < 10; i++) { // Tenta 10 vezes (aprox 30 segundos)
+          await new Promise(r => setTimeout(r, 3000));
+          const statusReq = await fetch(`https://graph.facebook.com/v20.0/${creationId}?fields=status_code&access_token=${token}`);
+          const statusRes = await statusReq.json();
+          console.log(`Status do processamento (${i+1}/10):`, statusRes.status_code);
+          if (statusRes.status_code === 'FINISHED') {
+            isReady = true;
+            break;
+          }
+        }
+
+        if (isReady) {
+          console.log("Publicando no Instagram...");
+          const pubReq = await fetch(`https://graph.facebook.com/v20.0/${igId}/media_publish`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ creation_id: creationId, access_token: token })
+          });
+          const pubData = await pubReq.json();
+          if (pubData.error) console.error("Erro Instagram:", pubData.error);
+        } else {
+          console.error("Erro Instagram: Tempo esgotado aguardando processamento da imagem.");
+        }
       }
     }
     return true;
