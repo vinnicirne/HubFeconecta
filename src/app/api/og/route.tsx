@@ -31,9 +31,10 @@ export async function GET(req: NextRequest) {
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: 'white',
-            fontFamily: 'sans-serif', // We will inject a custom font later if required
+            backgroundImage: 'linear-gradient(to bottom right, #09090b, #17172b, #1e1b4b)',
+            fontFamily: 'sans-serif',
             padding: '80px',
+            color: 'white',
           }}
         >
           {/* Header */}
@@ -45,27 +46,35 @@ export async function GET(req: NextRequest) {
               marginBottom: 'auto', // Pushes content to middle
             }}
           >
-            <img
-              src={avatarUrl}
-              alt="Avatar"
-              style={{
-                width: '100px',
-                height: '100px',
-                borderRadius: '50%',
-                marginRight: '30px',
-              }}
-            />
+            <div style={{
+              display: 'flex',
+              padding: '4px',
+              borderRadius: '50%',
+              backgroundImage: 'linear-gradient(to bottom right, #fbbf24, #f59e0b)',
+              marginRight: '30px',
+            }}>
+              <img
+                src={avatarUrl}
+                alt="Avatar"
+                style={{
+                  width: '100px',
+                  height: '100px',
+                  borderRadius: '50%',
+                  border: '4px solid #1e1b4b',
+                }}
+              />
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', alignItems: 'center' }}>
-                <span style={{ fontSize: '48px', fontWeight: 'bold', color: '#111' }}>{name}</span>
-                {/* Verified Badge placeholder */}
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="#3b82f6" style={{ marginLeft: '10px' }}>
+                <span style={{ fontSize: '48px', fontWeight: 'bold', color: '#ffffff', letterSpacing: '2px' }}>{name}</span>
+                {/* Verified Badge */}
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="#3b82f6" style={{ marginLeft: '12px' }}>
                   <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="white"/>
                   <circle cx="12" cy="12" r="10" />
                   <path d="M10 17l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="white"/>
                 </svg>
               </div>
-              <span style={{ fontSize: '24px', color: '#666', marginTop: '4px' }}>{username}</span>
+              <span style={{ fontSize: '26px', color: '#94a3b8', marginTop: '6px', letterSpacing: '1px' }}>{username}</span>
             </div>
           </div>
 
@@ -82,17 +91,23 @@ export async function GET(req: NextRequest) {
             }}
           >
             {type === 'data' && (
-              <span style={{ fontSize: '50px', fontWeight: 'bold', color: '#111', marginBottom: '30px' }}>
+              <span style={{ fontSize: '50px', fontWeight: 'bold', color: '#fbbf24', marginBottom: '40px', letterSpacing: '4px' }}>
                 {dateTitle.toUpperCase()}
               </span>
             )}
             
-            <span style={{ fontSize: '40px', fontWeight: 'bold', color: '#222', lineHeight: 1.3 }}>
-              {text.toUpperCase()}
+            <span style={{ 
+              fontSize: '48px', 
+              fontWeight: 'bold', 
+              color: '#f8fafc', 
+              lineHeight: 1.4,
+              textShadow: '0px 4px 20px rgba(0,0,0,0.5)',
+            }}>
+              {type === 'devocional' || type === 'motivacional' ? `"${text}"` : text.toUpperCase()}
             </span>
 
             {type === 'promessa' && (
-              <span style={{ fontSize: '32px', color: '#444', marginTop: '40px', letterSpacing: '4px' }}>
+              <span style={{ fontSize: '36px', color: '#fbbf24', marginTop: '50px', letterSpacing: '6px', fontWeight: 'bold' }}>
                 {reference.toUpperCase()}
               </span>
             )}
@@ -106,25 +121,27 @@ export async function GET(req: NextRequest) {
               justifyContent: 'center',
               width: '100%',
               marginTop: 'auto',
+              borderTop: '2px solid rgba(255,255,255,0.1)',
+              paddingTop: '40px',
             }}
           >
             {type === 'promessa' && (
-              <span style={{ fontSize: '28px', color: '#555', letterSpacing: '8px', fontWeight: 600 }}>
+              <span style={{ fontSize: '28px', color: '#fbbf24', letterSpacing: '10px', fontWeight: 600 }}>
                 CAIXINHA DE PROMESSAS
               </span>
             )}
             {type === 'devocional' && (
-              <span style={{ fontSize: '28px', color: '#555', letterSpacing: '8px', fontWeight: 600 }}>
+              <span style={{ fontSize: '28px', color: '#fbbf24', letterSpacing: '10px', fontWeight: 600 }}>
                 O CÉU TEM ALGO PARA TE DIZER HOJE
               </span>
             )}
             {type === 'pregacao' && (
-              <span style={{ fontSize: '28px', color: '#555', letterSpacing: '6px', fontWeight: 600 }}>
+              <span style={{ fontSize: '28px', color: '#fbbf24', letterSpacing: '8px', fontWeight: 600 }}>
                 {author.toUpperCase()}
               </span>
             )}
             {(type === 'motivacional' || type === 'data') && (
-              <span style={{ fontSize: '28px', color: '#555', letterSpacing: '8px', fontWeight: 600 }}>
+              <span style={{ fontSize: '28px', color: '#fbbf24', letterSpacing: '10px', fontWeight: 600 }}>
                 SIGA: {username.toUpperCase()}
               </span>
             )}
