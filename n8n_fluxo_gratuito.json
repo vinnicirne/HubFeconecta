@@ -1,0 +1,108 @@
+{
+  "name": "Diário do Céu -> Redes Sociais (NATIVO E GRATUITO)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 4
+            }
+          ]
+        }
+      },
+      "name": "Agendador",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://209.50.229.10:3000/api/generate",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "type",
+              "value": "devocional"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Gerar Post via IA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "photo",
+        "operation": "create",
+        "imageUrl": "={{ $json.posts[0].image_url }}",
+        "caption": "={{ $json.posts[0].text }}"
+      },
+      "name": "Instagram for Business",
+      "type": "n8n-nodes-base.instagram",
+      "typeVersion": 1,
+      "position": [
+        740,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "post",
+        "operation": "create",
+        "message": "={{ $json.posts[0].text }}",
+        "link": "={{ $json.posts[0].image_url }}"
+      },
+      "name": "Facebook Pages",
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        740,
+        420
+      ]
+    }
+  ],
+  "connections": {
+    "Agendador": {
+      "main": [
+        [
+          {
+            "node": "Gerar Post via IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gerar Post via IA": {
+      "main": [
+        [
+          {
+            "node": "Instagram for Business",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Facebook Pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {}
+}

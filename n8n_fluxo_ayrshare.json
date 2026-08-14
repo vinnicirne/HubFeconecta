@@ -1,0 +1,106 @@
+{
+  "name": "Diário do Céu -> Redes Sociais (Ayrshare)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 4
+            }
+          ]
+        }
+      },
+      "name": "Agendador",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://209.50.229.10:3000/api/generate",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "type",
+              "value": "devocional"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Gerar Post via IA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://app.ayrshare.com/api/post",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "post",
+              "value": "={{ $json.posts[0].text }}"
+            },
+            {
+              "name": "platforms",
+              "value": "[\"instagram\", \"facebook\"]"
+            },
+            {
+              "name": "mediaUrls",
+              "value": "=[{{ $json.posts[0].image_url }}]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Postar no Ayrshare",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        720,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Agendador": {
+      "main": [
+        [
+          {
+            "node": "Gerar Post via IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gerar Post via IA": {
+      "main": [
+        [
+          {
+            "node": "Postar no Ayrshare",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {}
+}
