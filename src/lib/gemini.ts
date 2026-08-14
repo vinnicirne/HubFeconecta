@@ -19,7 +19,7 @@ Estrutura JSON esperada:
 export async function generateContent(type: 'promessa' | 'devocional' | 'data' | 'motivacional' | 'pregacao') {
   try {
     const model = genAI.getGenerativeModel({
-      model: 'gemini-3.5-flash',
+      model: 'gemini-1.5-flash',
       systemInstruction: SYSTEM_PROMPT
     });
 
