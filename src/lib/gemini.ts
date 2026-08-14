@@ -1,10 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-if (!process.env.GEMINI_API_KEY) {
-  throw new Error('Missing GEMINI_API_KEY environment variable');
-}
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const apiKey = process.env.GEMINI_API_KEY || 'dummy_key';
+const genAI = new GoogleGenerativeAI(apiKey);
 
 const SYSTEM_PROMPT = `Você é um gerador de conteúdo cristão para o aplicativo "Diário do Céu".
 REGRA CRÍTICA: O texto gerado deve ser conciso e impactante.
