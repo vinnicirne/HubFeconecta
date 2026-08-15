@@ -1,0 +1,62 @@
+{
+  "name": "Gerador Diário Automático à Meia-Noite (Lote de 5)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1
+            }
+          ]
+        }
+      },
+      "name": "Agendador Diário",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://209.50.229.10:3000/api/generate",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "type",
+              "value": "all"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Gerar 5 Posts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        460,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Agendador Diário": {
+      "main": [
+        [
+          {
+            "node": "Gerar 5 Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {}
+}
