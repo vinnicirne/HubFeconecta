@@ -15,6 +15,47 @@ function getFormattedDateTitle(date: Date) {
 
 // Função postToMeta foi movida para o Cron Job
 
+async function getPeakHours(token: string): Promise<number[] | null> {
+  try {
+    const igReq = await fetch(`https://graph.facebook.com/v20.0/me?fields=instagram_business_account&access_token=${token}`);
+    const igRes = await igReq.json();
+    const igId = igRes?.instagram_business_account?.id;
+    
+    if (!igId) return null;
+
+    const insightsReq = await fetch(`https://graph.facebook.com/v20.0/${igId}/insights?metric=online_followers&period=lifetime&access_token=${token}`);
+    const insightsRes = await insightsReq.json();
+    
+    if (insightsRes.error || !insightsRes.data || insightsRes.data.length === 0) {
+       console.error("Insights API erro ou sem dados (Token provavelmente sem permissao de read_insights):", insightsRes.error);
+       return null;
+    }
+
+    const onlineData = insightsRes.data[0].values[0].value;
+    
+    const convertedHours = [];
+    for (const [hourStr, count] of Object.entries(onlineData)) {
+      const pstHour = parseInt(hourStr, 10);
+      // PDT (Pacific Daylight Time) é UTC-7. BRT (Brasília Time) é UTC-3. Diferença de +4 horas.
+      let brtHour = (pstHour + 4) % 24;
+      convertedHours.push({ hour: brtHour, count: count as number });
+    }
+
+    // Ordenar do maior número de seguidores online para o menor
+    convertedHours.sort((a, b) => b.count - a.count);
+
+    // Pegar as top 5 horas
+    const top5 = convertedHours.slice(0, 5).map(h => h.hour);
+    // Ordenar cronologicamente para postar em ordem no dia
+    top5.sort((a, b) => a - b);
+    
+    return top5.length === 5 ? top5 : null;
+  } catch(e) {
+    console.error("Erro ao pegar peak hours:", e);
+    return null;
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -26,9 +67,21 @@ export async function POST(req: Request) {
 
     const generatedPosts = [];
 
-    let scheduleOffsetHours = 8; // Começa amanhã às 08:00
+    // Tentar pegar horários dinâmicos da API
+    const token = process.env.META_PAGE_TOKEN || '';
+    let peakHours = await getPeakHours(token);
+    
+    if (peakHours) {
+      console.log("🔥 Agendamento Dinâmico Ativado! Melhores horas:", peakHours);
+    } else {
+      console.log("⚠️ Fallback para Agendamento Fixo. Não foi possível ler os insights.");
+      peakHours = [8, 11, 14, 17, 20]; // Fallback
+    }
+
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
+
+    let currentIndex = 0;
 
     for (const t of typesToGenerate) {
       // 1. Generate text with Gemini
@@ -56,10 +109,11 @@ export async function POST(req: Request) {
 
       const imageUrl = `${baseUrl}/api/og?${searchParams.toString()}`;
 
-      // 3. Define a data de agendamento (um por um, com algumas horas de diferença)
+      // 3. Define a data de agendamento usando os Horários de Pico
       const scheduledDate = new Date(tomorrow);
-      scheduledDate.setHours(scheduleOffsetHours, 0, 0, 0);
-      scheduleOffsetHours += 3; // O próximo será 3 horas depois
+      const hourForThisPost = peakHours[currentIndex % peakHours.length];
+      scheduledDate.setHours(hourForThisPost, 0, 0, 0);
+      currentIndex++;
 
       // 4. Save to Supabase (marca como 'pending' e com a data agendada)
       const finalImageUrl = imageUrl.replace('localhost', '209.50.229.10');
