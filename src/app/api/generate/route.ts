@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { generateContent } from '@/lib/gemini';
 import { supabase } from '@/lib/supabase';
 
+export const maxDuration = 60; // Permite que a Vercel Hobby rode a API por até 1 minuto para gerar os 8 posts
+
 // Helper for generating formatted date string like "TERÇA-FEIRA, 5 DE AGOSTO"
 function getFormattedDateTitle(date: Date) {
   const optionsWeekday: Intl.DateTimeFormatOptions = { weekday: 'long' };
