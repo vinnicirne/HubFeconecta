@@ -250,12 +250,18 @@ function TabDashboard({ posts, setPosts }: { posts: any[], setPosts: any }) {
               const dayName = day.toLocaleDateString('pt-BR', { weekday: 'short' });
               
               // Encontrar posts agendados para este dia (comparando no tempo local)
+              // Se o post já estiver publicado mas não tiver data de agendamento (posts antigos), usamos a data de criação como histórico
               const dayPosts = posts.filter(p => {
-                if (!p.scheduled_for) return false;
-                const pDate = new Date(p.scheduled_for);
+                const targetDate = p.scheduled_for || (p.status === 'published' ? p.created_at : null);
+                if (!targetDate) return false;
+                const pDate = new Date(targetDate);
                 const pLocalDateStr = pDate.toLocaleDateString('en-CA');
                 return pLocalDateStr === localDateStr;
-              }).sort((a, b) => new Date(a.scheduled_for).getTime() - new Date(b.scheduled_for).getTime());
+              }).sort((a, b) => {
+                const dateA = a.scheduled_for || a.created_at;
+                const dateB = b.scheduled_for || b.created_at;
+                return new Date(dateA).getTime() - new Date(dateB).getTime();
+              });
 
               const isToday = new Date().toLocaleDateString('en-CA') === localDateStr;
 
@@ -269,9 +275,10 @@ function TabDashboard({ posts, setPosts }: { posts: any[], setPosts: any }) {
                   </div>
 
                   {/* Slots do Dia */}
-                  <div className="flex-1 p-2 space-y-2 min-h-[500px]">
+                  <div className="flex-1 p-2 space-y-3 overflow-y-auto min-h-[400px]">
                     {dayPosts.map(post => {
-                      const timeStr = new Date(post.scheduled_for).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                      const targetTimeDate = post.scheduled_for || post.created_at;
+                      const timeStr = new Date(targetTimeDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
                       const isPublished = post.status === 'published';
 
                       return (
