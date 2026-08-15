@@ -11,15 +11,13 @@ import {
   Plus,
   Image as ImageIcon,
   Send,
-  Trash2,
-  Clock,
-  CalendarDays,
   CalendarIcon,
   Play,
   RefreshCw,
   LogOut,
   CheckCircle2,
-  Users
+  Users,
+  X
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
@@ -79,6 +77,11 @@ function TabDashboard({ posts, setPosts }: { posts: any[], setPosts: any }) {
     d.setDate(d.getDate() + diff);
     d.setHours(0, 0, 0, 0);
     return d;
+  // Estado do Modal de Agendamento
+  const [scheduleModal, setScheduleModal] = useState<{isOpen: boolean, post: any, dateVal: string}>({
+    isOpen: false,
+    post: null,
+    dateVal: ''
   });
 
   const handleDelete = async (id: string) => {
@@ -104,8 +107,7 @@ function TabDashboard({ posts, setPosts }: { posts: any[], setPosts: any }) {
     }
   };
 
-  const handleScheduleClick = async (post: any, defaultDateStr?: string) => {
-    // Se o usuário clicou na coluna do dia, podemos sugerir aquela data com um horário padrão (ex: 10:00)
+  const handleScheduleClick = (post: any, defaultDateStr?: string) => {
     let defaultPrompt = '';
     if (defaultDateStr) {
       defaultPrompt = defaultDateStr + "T10:00";
@@ -119,22 +121,26 @@ function TabDashboard({ posts, setPosts }: { posts: any[], setPosts: any }) {
       const offset = tomorrow.getTimezoneOffset() * 60000;
       defaultPrompt = new Date(tomorrow.getTime() - offset).toISOString().slice(0, 16);
     }
-
-    const newDateStr = prompt('Digite a data e hora do agendamento (AAAA-MM-DDTHH:MM):', defaultPrompt);
     
-    if (newDateStr) {
-      const newDate = new Date(newDateStr);
-      if (isNaN(newDate.getTime())) {
-        alert("Data inválida. Tente novamente no formato indicado.");
-        return;
-      }
-      
-      const { error } = await supabase.from('posts').update({ scheduled_for: newDate.toISOString() }).eq('id', post.id);
-      if (!error) {
-        setPosts(posts.map((p: any) => p.id === post.id ? { ...p, scheduled_for: newDate.toISOString() } : p));
-      } else {
-        alert('Erro ao agendar: ' + error.message);
-      }
+    // Abre o Modal em vez do prompt feio
+    setScheduleModal({ isOpen: true, post, dateVal: defaultPrompt });
+  };
+
+  const confirmSchedule = async () => {
+    if (!scheduleModal.post || !scheduleModal.dateVal) return;
+    const newDate = new Date(scheduleModal.dateVal);
+    
+    if (isNaN(newDate.getTime())) {
+      alert("Data inválida.");
+      return;
+    }
+    
+    const { error } = await supabase.from('posts').update({ scheduled_for: newDate.toISOString() }).eq('id', scheduleModal.post.id);
+    if (!error) {
+      setPosts(posts.map((p: any) => p.id === scheduleModal.post.id ? { ...p, scheduled_for: newDate.toISOString() } : p));
+      setScheduleModal({ isOpen: false, post: null, dateVal: '' }); // Fechar modal
+    } else {
+      alert('Erro ao agendar: ' + error.message);
     }
   };
 
@@ -312,6 +318,64 @@ function TabDashboard({ posts, setPosts }: { posts: any[], setPosts: any }) {
 
         </div>
       </div>
+      
+      {/* MODAL DE AGENDAMENTO */}
+      {scheduleModal.isOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#111116] border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+              <h3 className="text-white font-bold flex items-center gap-2">
+                <CalendarDays className="text-amber-500" size={18} />
+                Agendar Postagem
+              </h3>
+              <button 
+                onClick={() => setScheduleModal({ isOpen: false, post: null, dateVal: '' })} 
+                className="text-slate-400 hover:text-white transition-colors p-1"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              {scheduleModal.post && (
+                <div className="flex gap-4 items-center bg-slate-900/50 p-3 rounded-xl border border-slate-800">
+                  <img src={scheduleModal.post.image_url} className="w-16 h-16 object-cover rounded-lg" />
+                  <div>
+                    <p className="text-xs font-bold text-amber-500 uppercase">{scheduleModal.post.type}</p>
+                    <p className="text-sm text-slate-300 line-clamp-2">{scheduleModal.post.text}</p>
+                  </div>
+                </div>
+              )}
+              
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-400">Data e Hora Exata</label>
+                <input 
+                  type="datetime-local" 
+                  value={scheduleModal.dateVal}
+                  onChange={(e) => setScheduleModal({ ...scheduleModal, dateVal: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-3 outline-none focus:border-amber-500 transition-colors"
+                />
+              </div>
+            </div>
+            
+            <div className="p-4 border-t border-slate-800 bg-slate-900/30 flex gap-3 justify-end">
+              <button 
+                onClick={() => setScheduleModal({ isOpen: false, post: null, dateVal: '' })}
+                className="px-4 py-2 text-slate-400 font-bold hover:text-white transition-colors"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={confirmSchedule}
+                className="px-6 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-lg transition-colors shadow-lg shadow-amber-500/20"
+              >
+                Salvar Data
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
