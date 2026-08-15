@@ -1,0 +1,54 @@
+{
+  "name": "Publicador Automático de 5 em 5 minutos (Diário do Céu)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "name": "Agendador 5 minutos",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://209.50.229.10:3000/api/cron/publish",
+        "method": "GET",
+        "sendBody": false,
+        "options": {}
+      },
+      "name": "Disparar Gatilho",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        460,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Agendador 5 minutos": {
+      "main": [
+        [
+          {
+            "node": "Disparar Gatilho",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {}
+}
