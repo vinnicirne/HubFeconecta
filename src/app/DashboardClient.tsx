@@ -28,6 +28,21 @@ export default function DashboardClient({ initialPosts }: { initialPosts: any[] 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [posts, setPosts] = useState(initialPosts);
 
+  const [dialog, setDialog] = useState<{
+    isOpen: boolean;
+    type: 'alert' | 'confirm' | 'prompt';
+    title: string;
+    message: string;
+    value?: string;
+    resolve?: (val: any) => void;
+  } | null>(null);
+
+  const showDialog = (type: 'alert' | 'confirm' | 'prompt', title: string, message: string, defaultValue?: string): Promise<any> => {
+    return new Promise((resolve) => {
+      setDialog({ isOpen: true, type, title, message, value: defaultValue || '', resolve });
+    });
+  };
+
   return (
     <div className="flex h-screen bg-[#09090b] text-slate-300 font-sans overflow-hidden">
       
@@ -58,12 +73,60 @@ export default function DashboardClient({ initialPosts }: { initialPosts: any[] 
 
       {/* MAIN CONTENT */}
       <main className="flex-1 overflow-y-auto bg-gradient-to-br from-[#09090b] to-[#12121a]">
-        {activeTab === 'dashboard' && <TabDashboard posts={posts} setPosts={setPosts} />}
+        {activeTab === 'dashboard' && <TabDashboard posts={posts} setPosts={setPosts} showDialog={showDialog} />}
         {activeTab === 'creator' && <TabCreator />}
         {activeTab === 'analytics' && <TabAnalytics />}
         {activeTab === 'inbox' && <TabInbox />}
-        {activeTab === 'automations' && <TabAutomations />}
+        {activeTab === 'automations' && <TabAutomations showDialog={showDialog} />}
       </main>
+
+      {/* CUSTOM DIALOG */}
+      {dialog && dialog.isOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-[#111116] border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+              <h3 className="text-white font-bold flex items-center gap-2">
+                {dialog.title}
+              </h3>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <p className="text-slate-300 text-sm leading-relaxed">{dialog.message}</p>
+              {dialog.type === 'prompt' && (
+                <textarea 
+                  rows={4}
+                  value={dialog.value}
+                  onChange={(e) => setDialog({ ...dialog, value: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl p-3 outline-none focus:border-amber-500 transition-colors resize-none mt-2"
+                />
+              )}
+            </div>
+            
+            <div className="p-4 border-t border-slate-800 bg-slate-900/30 flex gap-3 justify-end">
+              {dialog.type !== 'alert' && (
+                <button 
+                  onClick={() => {
+                    dialog.resolve?.(dialog.type === 'prompt' ? null : false);
+                    setDialog(null);
+                  }}
+                  className="px-4 py-2 text-slate-400 font-bold hover:text-white transition-colors text-sm"
+                >
+                  Cancelar
+                </button>
+              )}
+              <button 
+                onClick={() => {
+                  dialog.resolve?.(dialog.type === 'prompt' ? dialog.value : true);
+                  setDialog(null);
+                }}
+                className={`px-6 py-2 font-bold rounded-lg transition-colors shadow-lg text-sm ${dialog.type === 'alert' ? 'bg-amber-500 hover:bg-amber-400 text-black shadow-amber-500/20' : 'bg-amber-500 hover:bg-amber-400 text-black shadow-amber-500/20'}`}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
@@ -71,7 +134,7 @@ export default function DashboardClient({ initialPosts }: { initialPosts: any[] 
 
 // --- TAB COMPONENTS ---
 
-function TabDashboard({ posts, setPosts }: { posts: any[], setPosts: any }) {
+function TabDashboard({ posts, setPosts, showDialog }: { posts: any[], setPosts: any, showDialog: any }) {
   // Estado para controlar a semana atual do calendário (Começa na segunda-feira atual)
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const d = new Date();
@@ -90,24 +153,25 @@ function TabDashboard({ posts, setPosts }: { posts: any[], setPosts: any }) {
   });
 
   const handleDelete = async (id: string) => {
-    if (confirm('Tem certeza que deseja excluir esta postagem?')) {
+    const ok = await showDialog('confirm', 'Excluir Post', 'Tem certeza que deseja excluir esta postagem?');
+    if (ok) {
       const { error } = await supabase.from('posts').delete().eq('id', id);
       if (!error) {
         setPosts(posts.filter((p: any) => p.id !== id));
       } else {
-        alert('Erro ao excluir: ' + error.message);
+        showDialog('alert', 'Erro', 'Erro ao excluir: ' + error.message);
       }
     }
   };
 
   const handleEdit = async (post: any) => {
-    const newText = prompt('Edite o texto da postagem:', post.text);
+    const newText = await showDialog('prompt', 'Editar Texto', 'Edite o texto da postagem:', post.text);
     if (newText && newText !== post.text) {
       const { error } = await supabase.from('posts').update({ text: newText }).eq('id', post.id);
       if (!error) {
         setPosts(posts.map((p: any) => p.id === post.id ? { ...p, text: newText } : p));
       } else {
-        alert('Erro ao editar: ' + error.message);
+        showDialog('alert', 'Erro', 'Erro ao editar: ' + error.message);
       }
     }
   };
@@ -136,7 +200,7 @@ function TabDashboard({ posts, setPosts }: { posts: any[], setPosts: any }) {
     const newDate = new Date(scheduleModal.dateVal);
     
     if (isNaN(newDate.getTime())) {
-      alert("Data inválida.");
+      showDialog('alert', 'Aviso', 'Data inválida.');
       return;
     }
     
@@ -145,7 +209,7 @@ function TabDashboard({ posts, setPosts }: { posts: any[], setPosts: any }) {
       setPosts(posts.map((p: any) => p.id === scheduleModal.post.id ? { ...p, scheduled_for: newDate.toISOString() } : p));
       setScheduleModal({ isOpen: false, post: null, dateVal: '' }); // Fechar modal
     } else {
-      alert('Erro ao agendar: ' + error.message);
+      showDialog('alert', 'Erro', 'Erro ao agendar: ' + error.message);
     }
   };
 
@@ -157,7 +221,8 @@ function TabDashboard({ posts, setPosts }: { posts: any[], setPosts: any }) {
   };
 
   const handlePublishNow = async (post: any) => {
-    if (confirm('Deseja realmente publicar essa arte no seu Instagram agora? Isso pode demorar até 1 minuto.')) {
+    const ok = await showDialog('confirm', 'Publicar Agora', 'Deseja realmente publicar essa arte no seu Instagram agora? Isso pode demorar até 1 minuto.');
+    if (ok) {
       try {
         const res = await fetch('/api/publish-now', {
           method: 'POST',
@@ -168,13 +233,13 @@ function TabDashboard({ posts, setPosts }: { posts: any[], setPosts: any }) {
         const data = await res.json();
         
         if (data.success) {
-          alert('Post publicado com sucesso no Instagram!');
+          await showDialog('alert', 'Sucesso', 'Post publicado com sucesso no Instagram!');
           setPosts(posts.map((p: any) => p.id === post.id ? { ...p, status: 'published', scheduled_for: null } : p));
         } else {
-          alert('Erro ao publicar: ' + data.error);
+          await showDialog('alert', 'Erro', 'Erro ao publicar: ' + data.error);
         }
       } catch (e: any) {
-        alert('Erro ao chamar a API de publicação: ' + e.message);
+        await showDialog('alert', 'Erro', 'Erro ao chamar a API de publicação: ' + e.message);
       }
     }
   };
@@ -345,7 +410,7 @@ function TabDashboard({ posts, setPosts }: { posts: any[], setPosts: any }) {
                         if(unscheduled) {
                           handleScheduleClick(unscheduled, localDateStr);
                         } else {
-                          alert("Você não tem posts em Rascunho. Gere um novo lote primeiro!");
+                          showDialog('alert', 'Aviso', "Você não tem posts em Rascunho. Gere um novo lote primeiro!");
                         }
                       }}
                       className="w-full py-2 border-2 border-dashed border-slate-800 rounded-lg text-slate-500 hover:text-amber-500 hover:border-amber-500/50 transition-colors flex justify-center opacity-0 hover:opacity-100"
@@ -607,7 +672,7 @@ function TabInbox() {
   );
 }
 
-function TabAutomations() {
+function TabAutomations({ showDialog }: { showDialog: any }) {
   const [automations, setAutomations] = useState<any[]>([]);
   const [triggerWord, setTriggerWord] = useState('');
   const [commentReply, setCommentReply] = useState('');
@@ -624,7 +689,10 @@ function TabAutomations() {
   }
 
   async function handleSave() {
-    if (!triggerWord || !dmReply) return alert('A palavra-chave e a mensagem do Direct são obrigatórias!');
+    if (!triggerWord || !dmReply) {
+      showDialog('alert', 'Aviso', 'A palavra-chave e a mensagem do Direct são obrigatórias!');
+      return;
+    }
     setLoading(true);
     
     await supabase.from('automations').insert({
@@ -642,7 +710,8 @@ function TabAutomations() {
   }
 
   async function handleDelete(id: string) {
-    if (confirm('Tem certeza que deseja excluir esta regra?')) {
+    const ok = await showDialog('confirm', 'Excluir Regra', 'Tem certeza que deseja excluir esta regra?');
+    if (ok) {
       await supabase.from('automations').delete().eq('id', id);
       await fetchAutomations();
     }
