@@ -358,6 +358,7 @@ function TabCreator() {
 
 function TabAnalytics() {
   const [data, setData] = useState<any>(null);
+  const [isMock, setIsMock] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -365,6 +366,7 @@ function TabAnalytics() {
       .then(r => r.json())
       .then(res => {
         setData(res.data);
+        setIsMock(res.isMock);
         setLoading(false);
       })
       .catch(err => {
@@ -392,8 +394,23 @@ function TabAnalytics() {
     <div className="p-10 space-y-8 max-w-7xl mx-auto overflow-y-auto max-h-full">
       <header className="flex justify-between items-end">
         <div>
-          <h2 className="text-3xl font-bold text-white mb-2">Análise de Engajamento</h2>
-          <p className="text-slate-400">Dados ao vivo do seu público e alcance dos últimos 28 dias.</p>
+          <h2 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
+            Análise de Engajamento
+            {isMock ? (
+              <span className="text-xs bg-red-500/20 text-red-400 px-3 py-1 rounded-full border border-red-500/50 flex items-center gap-1">
+                <CheckCircle2 size={12} /> DADOS SIMULADOS (MOCK)
+              </span>
+            ) : (
+              <span className="text-xs bg-green-500/20 text-green-400 px-3 py-1 rounded-full border border-green-500/50 flex items-center gap-1">
+                <CheckCircle2 size={12} /> DADOS REAIS AO VIVO
+              </span>
+            )}
+          </h2>
+          <p className="text-slate-400">
+            {isMock 
+              ? "⚠️ O Token atual não tem permissões de Insights. Mostrando demonstração." 
+              : "Dados ao vivo do seu público e alcance extraídos da Graph API."}
+          </p>
         </div>
       </header>
 
