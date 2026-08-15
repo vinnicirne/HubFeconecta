@@ -124,7 +124,7 @@ export async function POST(req: Request) {
           text: content.text,
           reference: content.reference || null,
           author: content.author || null,
-          image_url: finalImageUrl,
+          image_url: imageUrl,
           status: 'pending',
           scheduled_for: scheduledDate.toISOString() // Automático!
         })

@@ -3,13 +3,10 @@ import { supabase } from '@/lib/supabase';
 
 import { postToMeta } from '@/lib/meta';
 
+export const maxDuration = 60; // Allow enough time for IG processing
+
 export async function GET(req: Request) {
   try {
-    // Verificando autenticação do Vercel Cron
-    const authHeader = req.headers.get('authorization');
-    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
 
     // 1. Busca todos os posts pendentes com data de agendamento <= agora
     const { data: postsToPublish, error } = await supabase
