@@ -1,5 +1,6 @@
 {
-  "name": "Gerador Diário Automático à Meia-Noite (Lote de 5)",
+  "id": "gerador-diario-lote",
+  "name": "Gerador Diário Automático à Meia-Noite (Lote de 8)",
   "nodes": [
     {
       "parameters": {
@@ -22,7 +23,7 @@
     },
     {
       "parameters": {
-        "url": "http://209.50.229.10:3000/api/generate",
+        "url": "https://hubfeconecta.vercel.app/api/generate",
         "method": "POST",
         "sendBody": true,
         "bodyParameters": {
