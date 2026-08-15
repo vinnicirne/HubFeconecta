@@ -234,19 +234,22 @@ function TabDashboard({ posts, setPosts }: { posts: any[], setPosts: any }) {
           {/* Calendar Grid */}
           <div className="flex-1 grid grid-cols-7 overflow-y-auto">
             {weekDays.map((day, index) => {
-              const dateStr = day.toISOString().split('T')[0];
+              // Obter o YYYY-MM-DD local, para não ter conflito de fuso horário UTC
+              const localDateStr = day.toLocaleDateString('en-CA');
               const dayName = day.toLocaleDateString('pt-BR', { weekday: 'short' });
               
-              // Encontrar posts agendados para este dia
+              // Encontrar posts agendados para este dia (comparando no tempo local)
               const dayPosts = posts.filter(p => {
                 if (!p.scheduled_for) return false;
-                return p.scheduled_for.startsWith(dateStr);
+                const pDate = new Date(p.scheduled_for);
+                const pLocalDateStr = pDate.toLocaleDateString('en-CA');
+                return pLocalDateStr === localDateStr;
               }).sort((a, b) => new Date(a.scheduled_for).getTime() - new Date(b.scheduled_for).getTime());
 
-              const isToday = new Date().toISOString().split('T')[0] === dateStr;
+              const isToday = new Date().toLocaleDateString('en-CA') === localDateStr;
 
               return (
-                <div key={dateStr} className={`border-r border-slate-800 last:border-r-0 flex flex-col ${isToday ? 'bg-amber-500/5' : ''}`}>
+                <div key={localDateStr} className={`border-r border-slate-800 last:border-r-0 flex flex-col ${isToday ? 'bg-amber-500/5' : ''}`}>
                   
                   {/* Cabeçalho do Dia */}
                   <div className={`p-3 text-center border-b border-slate-800 sticky top-0 ${isToday ? 'bg-amber-500/10' : 'bg-[#111116]'}`}>
@@ -291,7 +294,7 @@ function TabDashboard({ posts, setPosts }: { posts: any[], setPosts: any }) {
                       onClick={() => {
                         const unscheduled = posts.find(p => p.status === 'pending' && !p.scheduled_for);
                         if(unscheduled) {
-                          handleScheduleClick(unscheduled, dateStr);
+                          handleScheduleClick(unscheduled, localDateStr);
                         } else {
                           alert("Você não tem posts em Rascunho. Gere um novo lote primeiro!");
                         }
