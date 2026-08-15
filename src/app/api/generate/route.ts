@@ -62,21 +62,15 @@ export async function POST(req: Request) {
     const { type } = body; // Can be a specific type or 'all'
 
     const typesToGenerate = type === 'all' 
-      ? ['promessa', 'devocional', 'data', 'motivacional', 'pregacao'] as const
+      ? ['promessa', 'devocional', 'data', 'motivacional', 'pregacao', 'devocional', 'promessa', 'motivacional'] as const
       : [type as 'promessa' | 'devocional' | 'data' | 'motivacional' | 'pregacao'];
 
     const generatedPosts = [];
 
-    // Tentar pegar horários dinâmicos da API
-    const token = process.env.META_PAGE_TOKEN || '';
-    let peakHours = await getPeakHours(token);
-    
-    if (peakHours) {
-      console.log("🔥 Agendamento Dinâmico Ativado! Melhores horas:", peakHours);
-    } else {
-      console.log("⚠️ Fallback para Agendamento Fixo. Não foi possível ler os insights.");
-      peakHours = [8, 11, 14, 17, 20]; // Fallback
-    }
+    // Para cobrir 24h, agendamos de 3 em 3 horas fixo:
+    // 00:00, 03:00, 06:00, 09:00, 12:00, 15:00, 18:00, 21:00
+    const scheduledHours = [0, 3, 6, 9, 12, 15, 18, 21];
+    console.log("🔥 Cobertura 24h Ativada! Horários fixos de 3 em 3h:", scheduledHours);
 
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -109,9 +103,9 @@ export async function POST(req: Request) {
 
       const imageUrl = `${baseUrl}/api/og?${searchParams.toString()}`;
 
-      // 3. Define a data de agendamento usando os Horários de Pico
+      // 3. Define a data de agendamento usando a distribuição 24h
       const scheduledDate = new Date(tomorrow);
-      const hourForThisPost = peakHours[currentIndex % peakHours.length];
+      const hourForThisPost = scheduledHours[currentIndex % scheduledHours.length];
       scheduledDate.setHours(hourForThisPost, 0, 0, 0);
       currentIndex++;
 
