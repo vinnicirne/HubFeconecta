@@ -14,8 +14,14 @@ import {
   Trash2,
   Clock,
   CalendarDays,
-  CalendarIcon
+  CalendarIcon,
+  Play,
+  RefreshCw,
+  LogOut,
+  CheckCircle2,
+  Users
 } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 export default function DashboardClient({ initialPosts }: { initialPosts: any[] }) {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -351,16 +357,112 @@ function TabCreator() {
 }
 
 function TabAnalytics() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/analytics')
+      .then(r => r.json())
+      .then(res => {
+        setData(res.data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="p-10 h-full flex items-center justify-center">
+        <div className="text-amber-500 flex flex-col items-center gap-4">
+          <RefreshCw className="animate-spin" size={32} />
+          <p className="font-bold">Analisando dados do Instagram...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return <div className="p-10 text-white">Erro ao carregar métricas.</div>;
+  }
+
   return (
-    <div className="p-10 max-w-7xl mx-auto space-y-8 flex flex-col items-center justify-center h-[80vh] text-center">
-      <BarChart3 size={64} className="text-amber-500 mb-4 opacity-50" />
-      <h2 className="text-3xl font-bold text-white">Analytics em Construção</h2>
-      <p className="text-slate-400 max-w-lg">
-        Para que os gráficos de alcance e horário de pico apareçam aqui, certifique-se de ter adicionado as permissões 
-        <strong className="text-amber-500"> read_insights </strong> e 
-        <strong className="text-amber-500"> instagram_manage_insights </strong>
-        no seu Token do Facebook.
-      </p>
+    <div className="p-10 space-y-8 max-w-7xl mx-auto overflow-y-auto max-h-full">
+      <header className="flex justify-between items-end">
+        <div>
+          <h2 className="text-3xl font-bold text-white mb-2">Análise de Engajamento</h2>
+          <p className="text-slate-400">Dados ao vivo do seu público e alcance dos últimos 28 dias.</p>
+        </div>
+      </header>
+
+      {/* Top Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-gradient-to-br from-amber-500/10 to-transparent p-6 rounded-2xl border border-amber-500/20">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-amber-500/20 rounded-lg text-amber-500"><Users size={20}/></div>
+            <h3 className="text-slate-400 font-bold uppercase text-xs">Total de Seguidores</h3>
+          </div>
+          <p className="text-4xl font-bold text-white">{data.followers_count.toLocaleString('pt-BR')}</p>
+        </div>
+        <div className="bg-gradient-to-br from-blue-500/10 to-transparent p-6 rounded-2xl border border-blue-500/20">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-blue-500/20 rounded-lg text-blue-500"><BarChart3 size={20}/></div>
+            <h3 className="text-slate-400 font-bold uppercase text-xs">Alcance (28 dias)</h3>
+          </div>
+          <p className="text-4xl font-bold text-white">+{data.reach.reduce((acc:any, curr:any) => acc + curr.value, 0).toLocaleString('pt-BR')}</p>
+        </div>
+        <div className="bg-gradient-to-br from-green-500/10 to-transparent p-6 rounded-2xl border border-green-500/20">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-green-500/20 rounded-lg text-green-500"><ImageIcon size={20}/></div>
+            <h3 className="text-slate-400 font-bold uppercase text-xs">Total de Posts</h3>
+          </div>
+          <p className="text-4xl font-bold text-white">{data.media_count}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Gráfico de Alcance */}
+        <div className="bg-[#111116] border border-slate-800 rounded-2xl p-6">
+          <h3 className="text-lg font-bold text-white mb-6">Crescimento de Alcance Diário</h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data.reach}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                <XAxis dataKey="date" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                <RechartsTooltip 
+                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px' }}
+                  itemStyle={{ color: '#f59e0b' }}
+                />
+                <Line type="monotone" dataKey="value" stroke="#f59e0b" strokeWidth={3} dot={{ fill: '#f59e0b', strokeWidth: 2 }} activeDot={{ r: 8 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Gráfico de Horários de Pico */}
+        <div className="bg-[#111116] border border-slate-800 rounded-2xl p-6">
+          <h3 className="text-lg font-bold text-white mb-2">Horários de Maior Audiência</h3>
+          <p className="text-sm text-slate-400 mb-6">Base usado para o agendamento automático do robô.</p>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data.peakHours}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                <XAxis dataKey="hour" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                <RechartsTooltip 
+                  cursor={{fill: '#1e293b'}}
+                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px' }}
+                />
+                <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
     </div>
   );
 }
