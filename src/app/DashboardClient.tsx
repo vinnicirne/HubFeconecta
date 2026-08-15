@@ -77,6 +77,8 @@ function TabDashboard({ posts, setPosts }: { posts: any[], setPosts: any }) {
     d.setDate(d.getDate() + diff);
     d.setHours(0, 0, 0, 0);
     return d;
+  });
+
   // Estado do Modal de Agendamento
   const [scheduleModal, setScheduleModal] = useState<{isOpen: boolean, post: any, dateVal: string}>({
     isOpen: false,
