@@ -12,7 +12,9 @@ import {
   Image as ImageIcon,
   Send,
   Trash2,
-  Clock
+  Clock,
+  CalendarDays,
+  CalendarIcon
 } from 'lucide-react';
 
 export default function DashboardClient({ initialPosts }: { initialPosts: any[] }) {
@@ -86,16 +88,32 @@ function TabDashboard({ posts, setPosts }: { posts: any[], setPosts: any }) {
     }
   };
 
+  const handleReschedule = async (id: string, newDate: string) => {
+    const { error } = await supabase.from('posts').update({ scheduled_for: new Date(newDate).toISOString() }).eq('id', id);
+    if (!error) {
+      setPosts(posts.map((p: any) => p.id === id ? { ...p, scheduled_for: new Date(newDate).toISOString() } : p));
+    } else {
+      alert('Erro ao agendar: ' + error.message);
+    }
+  };
+
+  // Organizar posts do mais recente para o mais antigo, mas colocar os pendentes com data futura primeiro
+  const sortedPosts = [...posts].sort((a, b) => {
+    if (a.status === 'pending' && b.status === 'published') return -1;
+    if (a.status === 'published' && b.status === 'pending') return 1;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+
   return (
     <div className="p-10 space-y-8 max-w-7xl mx-auto">
       <header className="flex justify-between items-end">
         <div>
-          <h2 className="text-3xl font-bold text-white mb-2">Visão Geral</h2>
-          <p className="text-slate-400">Acompanhe as últimas publicações geradas pelo sistema.</p>
+          <h2 className="text-3xl font-bold text-white mb-2">Calendário e Visão Geral</h2>
+          <p className="text-slate-400">Acompanhe as últimas publicações e agende os próximos conteúdos.</p>
         </div>
         <button className="bg-amber-500 hover:bg-amber-400 text-black font-bold py-2 px-6 rounded-lg shadow-[0_0_15px_rgba(245,158,11,0.3)] transition-all flex items-center gap-2">
-          <PenTool size={18} />
-          Gerar Novo Lote (n8n)
+          <CalendarDays size={18} />
+          Gerar e Agendar Novo Lote
         </button>
       </header>
 
@@ -107,37 +125,71 @@ function TabDashboard({ posts, setPosts }: { posts: any[], setPosts: any }) {
       </div>
 
       {/* Posts Grid */}
-      <div className="bg-[#111116] rounded-2xl border border-slate-800 overflow-hidden">
-        <div className="p-6 border-b border-slate-800 flex justify-between items-center">
-          <h3 className="text-lg font-bold text-white">Histórico Recente</h3>
+      <div className="bg-[#111116] rounded-2xl border border-slate-800 overflow-hidden shadow-xl">
+        <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+          <h3 className="text-lg font-bold text-white flex items-center gap-2"><CalendarIcon className="text-amber-500" size={20} /> Calendário de Postagens</h3>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-6">
-          {posts.map((post) => (
-            <div key={post.id} className="group relative rounded-xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-amber-500/50 transition-colors">
-              <div className="aspect-square bg-slate-950">
-                <img src={post.image_url} alt="Post" className="w-full h-full object-cover" />
-              </div>
-              <div className="p-4 space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-semibold uppercase text-amber-500">{post.type}</span>
-                  <span className={`text-[10px] px-2 py-1 rounded-full font-bold ${
-                    post.status === 'pending' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'
-                  }`}>
-                    {post.status}
-                  </span>
+          {sortedPosts.map((post) => {
+            // Formatar data local para o input datetime-local
+            let dateVal = "";
+            if (post.scheduled_for) {
+              const d = new Date(post.scheduled_for);
+              // O input datetime-local requer YYYY-MM-DDThh:mm
+              const offset = d.getTimezoneOffset() * 60000;
+              dateVal = new Date(d.getTime() - offset).toISOString().slice(0, 16);
+            }
+
+            return (
+              <div key={post.id} className={`group relative rounded-xl overflow-hidden bg-slate-900 border transition-colors ${post.status === 'pending' ? 'border-blue-500/30 hover:border-blue-500' : 'border-slate-800 hover:border-slate-600'}`}>
+                <div className="aspect-square bg-slate-950 relative">
+                  <img src={post.image_url} alt="Post" className="w-full h-full object-cover" />
+                  {post.status === 'pending' && (
+                    <div className="absolute top-2 right-2 bg-blue-500/90 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg backdrop-blur-sm flex items-center gap-1">
+                      <Clock size={12} /> AGENDADO
+                    </div>
+                  )}
                 </div>
-                <p className="text-sm text-slate-300 line-clamp-2">"{post.text}"</p>
-                <div className="flex gap-2 pt-2 border-t border-slate-800/50 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => handleEdit(post)} className="flex-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded flex items-center justify-center gap-1">
-                    <PenTool size={12} /> Editar
-                  </button>
-                  <button onClick={() => handleDelete(post.id)} className="flex-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-500 py-1.5 rounded flex items-center justify-center gap-1">
-                    <Trash2 size={12} /> Apagar
-                  </button>
+                <div className="p-4 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-semibold uppercase text-amber-500">{post.type}</span>
+                    <span className={`text-[10px] px-2 py-1 rounded-full font-bold ${
+                      post.status === 'pending' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'
+                    }`}>
+                      {post.status}
+                    </span>
+                  </div>
+                  
+                  {post.status === 'pending' ? (
+                    <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                      <label className="text-[10px] text-slate-500 font-bold uppercase mb-1 block">Vai ao ar em:</label>
+                      <input 
+                        type="datetime-local" 
+                        value={dateVal}
+                        onChange={(e) => handleReschedule(post.id, e.target.value)}
+                        className="w-full bg-transparent text-slate-300 text-xs outline-none cursor-pointer"
+                      />
+                    </div>
+                  ) : (
+                    <div className="bg-green-500/5 p-2 rounded-lg border border-green-500/10 text-center">
+                      <span className="text-[10px] text-green-500/70 font-bold uppercase block">Já Publicado</span>
+                    </div>
+                  )}
+
+                  <p className="text-sm text-slate-300 line-clamp-2 mt-2" title={post.text}>"{post.text}"</p>
+                  
+                  <div className="flex gap-2 pt-2 border-t border-slate-800/50 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => handleEdit(post)} className="flex-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded flex items-center justify-center gap-1">
+                      <PenTool size={12} /> Editar
+                    </button>
+                    <button onClick={() => handleDelete(post.id)} className="flex-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-500 py-1.5 rounded flex items-center justify-center gap-1">
+                      <Trash2 size={12} /> Apagar
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

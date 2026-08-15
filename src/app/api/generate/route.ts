@@ -13,73 +13,7 @@ function getFormattedDateTitle(date: Date) {
   return `${weekday}, ${dayMonth}`;
 }
 
-// Funcao magica para postar nativamente no Facebook e Instagram
-async function postToMeta(imageUrl: string, text: string) {
-  const token = process.env.META_PAGE_TOKEN;
-  if (!token) {
-    console.log("Nenhum META_PAGE_TOKEN encontrado. Pulando envio pras redes.");
-    return false;
-  }
-
-  try {
-    console.log("Enviando para a pagina do Facebook...");
-    const fbRes = await fetch(`https://graph.facebook.com/v20.0/me/photos`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: imageUrl, message: text, access_token: token })
-    });
-    const fbData = await fbRes.json();
-    if (fbData.error) console.error("Erro Facebook:", fbData.error);
-    
-    console.log("Procurando a conta do Instagram...");
-    const igReq = await fetch(`https://graph.facebook.com/v20.0/me?fields=instagram_business_account&access_token=${token}`);
-    const igRes = await igReq.json();
-    const igId = igRes?.instagram_business_account?.id;
-
-    if (igId) {
-      console.log("Subindo imagem pro Instagram...");
-      const containerReq = await fetch(`https://graph.facebook.com/v20.0/${igId}/media`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image_url: imageUrl, caption: text, access_token: token })
-      });
-      const containerRes = await containerReq.json();
-      const creationId = containerRes?.id;
-
-      if (creationId) {
-        console.log("Aguardando o Instagram processar a imagem...");
-        let isReady = false;
-        for (let i = 0; i < 10; i++) { // Tenta 10 vezes (aprox 30 segundos)
-          await new Promise(r => setTimeout(r, 3000));
-          const statusReq = await fetch(`https://graph.facebook.com/v20.0/${creationId}?fields=status_code&access_token=${token}`);
-          const statusRes = await statusReq.json();
-          console.log(`Status do processamento (${i+1}/10):`, statusRes.status_code);
-          if (statusRes.status_code === 'FINISHED') {
-            isReady = true;
-            break;
-          }
-        }
-
-        if (isReady) {
-          console.log("Publicando no Instagram...");
-          const pubReq = await fetch(`https://graph.facebook.com/v20.0/${igId}/media_publish`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ creation_id: creationId, access_token: token })
-          });
-          const pubData = await pubReq.json();
-          if (pubData.error) console.error("Erro Instagram:", pubData.error);
-        } else {
-          console.error("Erro Instagram: Tempo esgotado aguardando processamento da imagem.");
-        }
-      }
-    }
-    return true;
-  } catch (error) {
-    console.error("Erro geral Meta API:", error);
-    return false;
-  }
-}
+// Função postToMeta foi movida para o Cron Job
 
 export async function POST(req: Request) {
   try {
@@ -91,6 +25,10 @@ export async function POST(req: Request) {
       : [type as 'promessa' | 'devocional' | 'data' | 'motivacional' | 'pregacao'];
 
     const generatedPosts = [];
+
+    let scheduleOffsetHours = 8; // Começa amanhã às 08:00
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
 
     for (const t of typesToGenerate) {
       // 1. Generate text with Gemini
@@ -113,18 +51,18 @@ export async function POST(req: Request) {
         searchParams.set('author', content.author);
       }
       if (t === 'data') {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1); // generate for tomorrow usually
         searchParams.set('dateTitle', getFormattedDateTitle(tomorrow));
       }
 
       const imageUrl = `${baseUrl}/api/og?${searchParams.toString()}`;
 
-      // 3. Postar nas Redes Sociais! (O Meta exige URL publica)
-      const finalImageUrl = imageUrl.replace('localhost', '209.50.229.10');
-      const isPosted = await postToMeta(finalImageUrl, content.text);
+      // 3. Define a data de agendamento (um por um, com algumas horas de diferença)
+      const scheduledDate = new Date(tomorrow);
+      scheduledDate.setHours(scheduleOffsetHours, 0, 0, 0);
+      scheduleOffsetHours += 3; // O próximo será 3 horas depois
 
-      // 4. Save to Supabase (marca como 'published' se deu certo)
+      // 4. Save to Supabase (marca como 'pending')
+      const finalImageUrl = imageUrl.replace('localhost', '209.50.229.10');
       const { data, error } = await supabase
         .from('posts')
         .insert({
@@ -132,8 +70,9 @@ export async function POST(req: Request) {
           text: content.text,
           reference: content.reference || null,
           author: content.author || null,
-          image_url: imageUrl,
-          status: isPosted ? 'published' : 'pending',
+          image_url: finalImageUrl,
+          status: 'pending',
+          scheduled_for: scheduledDate.toISOString()
         })
         .select()
         .single();
