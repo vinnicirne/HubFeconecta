@@ -49,7 +49,7 @@ export default function DashboardClient({ initialPosts }: { initialPosts: any[] 
 
       {/* MAIN CONTENT */}
       <main className="flex-1 overflow-y-auto bg-gradient-to-br from-[#09090b] to-[#12121a]">
-        {activeTab === 'dashboard' && <TabDashboard posts={posts} />}
+        {activeTab === 'dashboard' && <TabDashboard posts={posts} setPosts={setPosts} />}
         {activeTab === 'creator' && <TabCreator />}
         {activeTab === 'analytics' && <TabAnalytics />}
         {activeTab === 'inbox' && <TabInbox />}
@@ -62,7 +62,30 @@ export default function DashboardClient({ initialPosts }: { initialPosts: any[] 
 
 // --- TAB COMPONENTS ---
 
-function TabDashboard({ posts }: { posts: any[] }) {
+function TabDashboard({ posts, setPosts }: { posts: any[], setPosts: any }) {
+  const handleDelete = async (id: string) => {
+    if (confirm('Tem certeza que deseja excluir esta postagem?')) {
+      const { error } = await supabase.from('posts').delete().eq('id', id);
+      if (!error) {
+        setPosts(posts.filter((p: any) => p.id !== id));
+      } else {
+        alert('Erro ao excluir: ' + error.message);
+      }
+    }
+  };
+
+  const handleEdit = async (post: any) => {
+    const newText = prompt('Edite o texto da postagem:', post.text);
+    if (newText && newText !== post.text) {
+      const { error } = await supabase.from('posts').update({ text: newText }).eq('id', post.id);
+      if (!error) {
+        setPosts(posts.map((p: any) => p.id === post.id ? { ...p, text: newText } : p));
+      } else {
+        alert('Erro ao editar: ' + error.message);
+      }
+    }
+  };
+
   return (
     <div className="p-10 space-y-8 max-w-7xl mx-auto">
       <header className="flex justify-between items-end">
@@ -104,6 +127,14 @@ function TabDashboard({ posts }: { posts: any[] }) {
                   </span>
                 </div>
                 <p className="text-sm text-slate-300 line-clamp-2">"{post.text}"</p>
+                <div className="flex gap-2 pt-2 border-t border-slate-800/50 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => handleEdit(post)} className="flex-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded flex items-center justify-center gap-1">
+                    <PenTool size={12} /> Editar
+                  </button>
+                  <button onClick={() => handleDelete(post.id)} className="flex-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-500 py-1.5 rounded flex items-center justify-center gap-1">
+                    <Trash2 size={12} /> Apagar
+                  </button>
+                </div>
               </div>
             </div>
           ))}
