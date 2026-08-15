@@ -85,7 +85,11 @@ export async function POST(req: Request) {
       const content = await generateContent(t);
       
       // 2. Prepare OG Image URL params
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      let baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://hubfeconecta.vercel.app';
+      if (baseUrl.includes('localhost')) {
+        baseUrl = 'https://hubfeconecta.vercel.app';
+      }
+      
       const searchParams = new URLSearchParams({
         type: t,
         text: content.text,
@@ -113,7 +117,6 @@ export async function POST(req: Request) {
       currentIndex++;
 
       // 4. Save to Supabase (marca como 'pending' e com a data agendada)
-      const finalImageUrl = imageUrl.replace('localhost', '209.50.229.10');
       const { data, error } = await supabase
         .from('posts')
         .insert({

@@ -13,7 +13,10 @@ export async function postToMeta(imageUrl: string, text: string) {
       body: JSON.stringify({ url: imageUrl, message: text, access_token: token })
     });
     const fbData = await fbRes.json();
-    if (fbData.error) console.error("Erro Facebook:", fbData.error);
+    if (fbData.error) {
+      console.error("Erro Facebook:", fbData.error);
+      return false;
+    }
     
     console.log("Procurando a conta do Instagram...");
     const igReq = await fetch(`https://graph.facebook.com/v20.0/me?fields=instagram_business_account&access_token=${token}`);
@@ -28,6 +31,10 @@ export async function postToMeta(imageUrl: string, text: string) {
         body: JSON.stringify({ image_url: imageUrl, caption: text, access_token: token })
       });
       const containerRes = await containerReq.json();
+      if (containerRes.error) {
+        console.error("Erro Container Instagram:", containerRes.error);
+        return false;
+      }
       const creationId = containerRes?.id;
 
       if (creationId) {
@@ -52,9 +59,13 @@ export async function postToMeta(imageUrl: string, text: string) {
             body: JSON.stringify({ creation_id: creationId, access_token: token })
           });
           const pubData = await pubReq.json();
-          if (pubData.error) console.error("Erro Instagram:", pubData.error);
+          if (pubData.error) {
+            console.error("Erro Instagram:", pubData.error);
+            return false;
+          }
         } else {
           console.error("Erro Instagram: Tempo esgotado aguardando processamento da imagem.");
+          return false;
         }
       }
     }
