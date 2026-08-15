@@ -65,6 +65,16 @@ export default function DashboardClient({ initialPosts }: { initialPosts: any[] 
 // --- TAB COMPONENTS ---
 
 function TabDashboard({ posts, setPosts }: { posts: any[], setPosts: any }) {
+  // Estado para controlar a semana atual do calendário (Começa na segunda-feira atual)
+  const [currentWeekStart, setCurrentWeekStart] = useState(() => {
+    const d = new Date();
+    const day = d.getDay(); // 0 é domingo, 1 é segunda
+    const diff = day === 0 ? -6 : 1 - day;
+    d.setDate(d.getDate() + diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
+
   const handleDelete = async (id: string) => {
     if (confirm('Tem certeza que deseja excluir esta postagem?')) {
       const { error } = await supabase.from('posts').delete().eq('id', id);
@@ -88,108 +98,209 @@ function TabDashboard({ posts, setPosts }: { posts: any[], setPosts: any }) {
     }
   };
 
-  const handleReschedule = async (id: string, newDate: string) => {
-    const { error } = await supabase.from('posts').update({ scheduled_for: new Date(newDate).toISOString() }).eq('id', id);
-    if (!error) {
-      setPosts(posts.map((p: any) => p.id === id ? { ...p, scheduled_for: new Date(newDate).toISOString() } : p));
+  const handleScheduleClick = async (post: any, defaultDateStr?: string) => {
+    // Se o usuário clicou na coluna do dia, podemos sugerir aquela data com um horário padrão (ex: 10:00)
+    let defaultPrompt = '';
+    if (defaultDateStr) {
+      defaultPrompt = defaultDateStr + "T10:00";
+    } else if (post.scheduled_for) {
+      const d = new Date(post.scheduled_for);
+      const offset = d.getTimezoneOffset() * 60000;
+      defaultPrompt = new Date(d.getTime() - offset).toISOString().slice(0, 16);
     } else {
-      alert('Erro ao agendar: ' + error.message);
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const offset = tomorrow.getTimezoneOffset() * 60000;
+      defaultPrompt = new Date(tomorrow.getTime() - offset).toISOString().slice(0, 16);
+    }
+
+    const newDateStr = prompt('Digite a data e hora do agendamento (AAAA-MM-DDTHH:MM):', defaultPrompt);
+    
+    if (newDateStr) {
+      const newDate = new Date(newDateStr);
+      if (isNaN(newDate.getTime())) {
+        alert("Data inválida. Tente novamente no formato indicado.");
+        return;
+      }
+      
+      const { error } = await supabase.from('posts').update({ scheduled_for: newDate.toISOString() }).eq('id', post.id);
+      if (!error) {
+        setPosts(posts.map((p: any) => p.id === post.id ? { ...p, scheduled_for: newDate.toISOString() } : p));
+      } else {
+        alert('Erro ao agendar: ' + error.message);
+      }
     }
   };
 
-  // Organizar posts do mais recente para o mais antigo, mas colocar os pendentes com data futura primeiro
-  const sortedPosts = [...posts].sort((a, b) => {
-    if (a.status === 'pending' && b.status === 'published') return -1;
-    if (a.status === 'published' && b.status === 'pending') return 1;
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  const handleUnschedule = async (post: any) => {
+    const { error } = await supabase.from('posts').update({ scheduled_for: null }).eq('id', post.id);
+    if (!error) {
+      setPosts(posts.map((p: any) => p.id === post.id ? { ...p, scheduled_for: null } : p));
+    }
+  };
+
+  const prevWeek = () => {
+    const d = new Date(currentWeekStart);
+    d.setDate(d.getDate() - 7);
+    setCurrentWeekStart(d);
+  };
+
+  const nextWeek = () => {
+    const d = new Date(currentWeekStart);
+    d.setDate(d.getDate() + 7);
+    setCurrentWeekStart(d);
+  };
+
+  // Separar os posts
+  const unscheduledPosts = posts.filter(p => p.status === 'pending' && !p.scheduled_for);
+  
+  // Gerar os dias da semana
+  const weekDays = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date(currentWeekStart);
+    d.setDate(d.getDate() + i);
+    return d;
   });
 
+  const monthName = currentWeekStart.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase();
+
   return (
-    <div className="p-10 space-y-8 max-w-7xl mx-auto">
-      <header className="flex justify-between items-end">
+    <div className="p-8 h-full flex flex-col space-y-6">
+      <header className="flex justify-between items-end shrink-0">
         <div>
-          <h2 className="text-3xl font-bold text-white mb-2">Calendário e Visão Geral</h2>
-          <p className="text-slate-400">Acompanhe as últimas publicações e agende os próximos conteúdos.</p>
+          <h2 className="text-3xl font-bold text-white mb-2">Planner Calendário</h2>
+          <p className="text-slate-400">Arraste a visão geral para o nível profissional. Agende o que vai ao ar.</p>
         </div>
         <button className="bg-amber-500 hover:bg-amber-400 text-black font-bold py-2 px-6 rounded-lg shadow-[0_0_15px_rgba(245,158,11,0.3)] transition-all flex items-center gap-2">
           <CalendarDays size={18} />
-          Gerar e Agendar Novo Lote
+          Gerar Novo Lote (Rascunhos)
         </button>
       </header>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatCard title="Total de Publicações" value={posts.length.toString()} icon={ImageIcon} />
-        <StatCard title="Posts Pendentes" value={posts.filter(p => p.status === 'pending').length.toString()} icon={Clock} />
-        <StatCard title="Alcance Estimado" value="Calculando..." icon={BarChart3} />
-      </div>
-
-      {/* Posts Grid */}
-      <div className="bg-[#111116] rounded-2xl border border-slate-800 overflow-hidden shadow-xl">
-        <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
-          <h3 className="text-lg font-bold text-white flex items-center gap-2"><CalendarIcon className="text-amber-500" size={20} /> Calendário de Postagens</h3>
+      <div className="flex-1 flex gap-6 overflow-hidden min-h-0">
+        
+        {/* COLUNA ESQUERDA: RASCUNHOS / NÃO AGENDADOS */}
+        <div className="w-72 shrink-0 bg-[#111116] border border-slate-800 rounded-2xl flex flex-col overflow-hidden">
+          <div className="p-4 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center">
+            <h3 className="font-bold text-white">Não Agendados</h3>
+            <span className="bg-amber-500/20 text-amber-500 text-xs px-2 py-1 rounded-full font-bold">{unscheduledPosts.length}</span>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {unscheduledPosts.length === 0 ? (
+              <p className="text-slate-500 text-sm text-center mt-4">Nenhum post de rascunho.</p>
+            ) : (
+              unscheduledPosts.map(post => (
+                <div key={post.id} className="bg-slate-900 border border-slate-700 hover:border-amber-500/50 rounded-xl overflow-hidden transition-all group">
+                  <img src={post.image_url} className="w-full aspect-square object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                  <div className="p-3 bg-slate-900">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-[10px] font-bold uppercase text-amber-500">{post.type}</span>
+                      <button onClick={() => handleDelete(post.id)} className="text-slate-500 hover:text-red-500 transition-colors"><Trash2 size={14}/></button>
+                    </div>
+                    <button 
+                      onClick={() => handleScheduleClick(post)}
+                      className="w-full py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 rounded text-xs font-bold transition-colors flex items-center justify-center gap-1"
+                    >
+                      <CalendarDays size={12} /> Agendar
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-6">
-          {sortedPosts.map((post) => {
-            // Formatar data local para o input datetime-local
-            let dateVal = "";
-            if (post.scheduled_for) {
-              const d = new Date(post.scheduled_for);
-              // O input datetime-local requer YYYY-MM-DDThh:mm
-              const offset = d.getTimezoneOffset() * 60000;
-              dateVal = new Date(d.getTime() - offset).toISOString().slice(0, 16);
-            }
 
-            return (
-              <div key={post.id} className={`group relative rounded-xl overflow-hidden bg-slate-900 border transition-colors ${post.status === 'pending' ? 'border-blue-500/30 hover:border-blue-500' : 'border-slate-800 hover:border-slate-600'}`}>
-                <div className="aspect-square bg-slate-950 relative">
-                  <img src={post.image_url} alt="Post" className="w-full h-full object-cover" />
-                  {post.status === 'pending' && (
-                    <div className="absolute top-2 right-2 bg-blue-500/90 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg backdrop-blur-sm flex items-center gap-1">
-                      <Clock size={12} /> AGENDADO
-                    </div>
-                  )}
-                </div>
-                <div className="p-4 space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-semibold uppercase text-amber-500">{post.type}</span>
-                    <span className={`text-[10px] px-2 py-1 rounded-full font-bold ${
-                      post.status === 'pending' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'
-                    }`}>
-                      {post.status}
-                    </span>
-                  </div>
-                  
-                  {post.status === 'pending' ? (
-                    <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
-                      <label className="text-[10px] text-slate-500 font-bold uppercase mb-1 block">Vai ao ar em:</label>
-                      <input 
-                        type="datetime-local" 
-                        value={dateVal}
-                        onChange={(e) => handleReschedule(post.id, e.target.value)}
-                        className="w-full bg-transparent text-slate-300 text-xs outline-none cursor-pointer"
-                      />
-                    </div>
-                  ) : (
-                    <div className="bg-green-500/5 p-2 rounded-lg border border-green-500/10 text-center">
-                      <span className="text-[10px] text-green-500/70 font-bold uppercase block">Já Publicado</span>
-                    </div>
-                  )}
+        {/* COLUNA DIREITA: CALENDÁRIO */}
+        <div className="flex-1 bg-[#111116] border border-slate-800 rounded-2xl flex flex-col overflow-hidden">
+          
+          {/* Calendar Header */}
+          <div className="p-4 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center">
+            <h3 className="font-bold text-white text-lg capitalize">{monthName}</h3>
+            <div className="flex gap-2">
+              <button onClick={prevWeek} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors">
+                &larr; Semana Ant.
+              </button>
+              <button onClick={nextWeek} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors">
+                Próx. Semana &rarr;
+              </button>
+            </div>
+          </div>
 
-                  <p className="text-sm text-slate-300 line-clamp-2 mt-2" title={post.text}>"{post.text}"</p>
+          {/* Calendar Grid */}
+          <div className="flex-1 grid grid-cols-7 overflow-y-auto">
+            {weekDays.map((day, index) => {
+              const dateStr = day.toISOString().split('T')[0];
+              const dayName = day.toLocaleDateString('pt-BR', { weekday: 'short' });
+              
+              // Encontrar posts agendados para este dia
+              const dayPosts = posts.filter(p => {
+                if (!p.scheduled_for) return false;
+                return p.scheduled_for.startsWith(dateStr);
+              }).sort((a, b) => new Date(a.scheduled_for).getTime() - new Date(b.scheduled_for).getTime());
+
+              const isToday = new Date().toISOString().split('T')[0] === dateStr;
+
+              return (
+                <div key={dateStr} className={`border-r border-slate-800 last:border-r-0 flex flex-col ${isToday ? 'bg-amber-500/5' : ''}`}>
                   
-                  <div className="flex gap-2 pt-2 border-t border-slate-800/50 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => handleEdit(post)} className="flex-1 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded flex items-center justify-center gap-1">
-                      <PenTool size={12} /> Editar
-                    </button>
-                    <button onClick={() => handleDelete(post.id)} className="flex-1 text-xs bg-red-500/10 hover:bg-red-500/20 text-red-500 py-1.5 rounded flex items-center justify-center gap-1">
-                      <Trash2 size={12} /> Apagar
+                  {/* Cabeçalho do Dia */}
+                  <div className={`p-3 text-center border-b border-slate-800 sticky top-0 ${isToday ? 'bg-amber-500/10' : 'bg-[#111116]'}`}>
+                    <p className={`text-xs font-bold uppercase ${isToday ? 'text-amber-500' : 'text-slate-500'}`}>{dayName}</p>
+                    <p className={`text-lg font-bold ${isToday ? 'text-amber-500' : 'text-white'}`}>{day.getDate()}</p>
+                  </div>
+
+                  {/* Slots do Dia */}
+                  <div className="flex-1 p-2 space-y-2 min-h-[500px]">
+                    {dayPosts.map(post => {
+                      const timeStr = new Date(post.scheduled_for).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                      const isPublished = post.status === 'published';
+
+                      return (
+                        <div key={post.id} className={`rounded-lg border overflow-hidden group transition-all hover:scale-105 cursor-pointer ${isPublished ? 'border-green-500/30' : 'border-blue-500/30'}`}>
+                          
+                          <div className={`text-[10px] font-bold px-2 py-1 text-center flex items-center justify-center gap-1 ${isPublished ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                            {isPublished ? <span>PUBLICADO {timeStr}</span> : <><Clock size={10} /> {timeStr}</>}
+                          </div>
+                          
+                          <div className="relative aspect-square">
+                            <img src={post.image_url} className="w-full h-full object-cover" />
+                            
+                            {/* Hover Actions */}
+                            <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity p-2">
+                              {!isPublished && (
+                                <>
+                                  <button onClick={() => handleScheduleClick(post)} className="w-full bg-slate-800 text-white text-[10px] py-1 rounded hover:bg-slate-700">Mudar Hora</button>
+                                  <button onClick={() => handleUnschedule(post)} className="w-full bg-red-500/20 text-red-400 text-[10px] py-1 rounded hover:bg-red-500/40">Desagendar</button>
+                                </>
+                              )}
+                              <button onClick={() => handleEdit(post)} className="w-full bg-amber-500/20 text-amber-500 text-[10px] py-1 rounded hover:bg-amber-500/40">Editar Texto</button>
+                            </div>
+                          </div>
+                          
+                        </div>
+                      );
+                    })}
+
+                    {/* Botão de adicionar direto no dia */}
+                    <button 
+                      onClick={() => {
+                        const unscheduled = posts.find(p => p.status === 'pending' && !p.scheduled_for);
+                        if(unscheduled) {
+                          handleScheduleClick(unscheduled, dateStr);
+                        } else {
+                          alert("Você não tem posts em Rascunho. Gere um novo lote primeiro!");
+                        }
+                      }}
+                      className="w-full py-2 border-2 border-dashed border-slate-800 rounded-lg text-slate-500 hover:text-amber-500 hover:border-amber-500/50 transition-colors flex justify-center opacity-0 hover:opacity-100"
+                    >
+                      <Plus size={16} />
                     </button>
                   </div>
+
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+
         </div>
       </div>
     </div>

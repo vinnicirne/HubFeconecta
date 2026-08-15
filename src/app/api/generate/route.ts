@@ -26,7 +26,6 @@ export async function POST(req: Request) {
 
     const generatedPosts = [];
 
-    let scheduleOffsetHours = 8; // Começa amanhã às 08:00
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
 
@@ -56,12 +55,7 @@ export async function POST(req: Request) {
 
       const imageUrl = `${baseUrl}/api/og?${searchParams.toString()}`;
 
-      // 3. Define a data de agendamento (um por um, com algumas horas de diferença)
-      const scheduledDate = new Date(tomorrow);
-      scheduledDate.setHours(scheduleOffsetHours, 0, 0, 0);
-      scheduleOffsetHours += 3; // O próximo será 3 horas depois
-
-      // 4. Save to Supabase (marca como 'pending')
+      // 3. Save to Supabase (marca como 'pending' e sem data)
       const finalImageUrl = imageUrl.replace('localhost', '209.50.229.10');
       const { data, error } = await supabase
         .from('posts')
@@ -72,7 +66,7 @@ export async function POST(req: Request) {
           author: content.author || null,
           image_url: finalImageUrl,
           status: 'pending',
-          scheduled_for: scheduledDate.toISOString()
+          scheduled_for: null // Salva como rascunho (Não Agendado)
         })
         .select()
         .single();
