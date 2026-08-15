@@ -156,6 +156,29 @@ function TabDashboard({ posts, setPosts }: { posts: any[], setPosts: any }) {
     }
   };
 
+  const handlePublishNow = async (post: any) => {
+    if (confirm('Deseja realmente publicar essa arte no seu Instagram agora? Isso pode demorar até 1 minuto.')) {
+      try {
+        const res = await fetch('/api/publish-now', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ postId: post.id })
+        });
+        
+        const data = await res.json();
+        
+        if (data.success) {
+          alert('Post publicado com sucesso no Instagram!');
+          setPosts(posts.map((p: any) => p.id === post.id ? { ...p, status: 'published', scheduled_for: null } : p));
+        } else {
+          alert('Erro ao publicar: ' + data.error);
+        }
+      } catch (e: any) {
+        alert('Erro ao chamar a API de publicação: ' + e.message);
+      }
+    }
+  };
+
   const prevWeek = () => {
     const d = new Date(currentWeekStart);
     d.setDate(d.getDate() - 7);
@@ -213,12 +236,20 @@ function TabDashboard({ posts, setPosts }: { posts: any[], setPosts: any }) {
                       <span className="text-[10px] font-bold uppercase text-amber-500">{post.type}</span>
                       <button onClick={() => handleDelete(post.id)} className="text-slate-500 hover:text-red-500 transition-colors"><Trash2 size={14}/></button>
                     </div>
-                    <button 
-                      onClick={() => handleScheduleClick(post)}
-                      className="w-full py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 rounded text-xs font-bold transition-colors flex items-center justify-center gap-1"
-                    >
-                      <CalendarDays size={12} /> Agendar
-                    </button>
+                    <div className="flex gap-2 w-full">
+                      <button 
+                        onClick={() => handleScheduleClick(post)}
+                        className="flex-1 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 rounded text-xs font-bold transition-colors flex items-center justify-center gap-1"
+                      >
+                        <CalendarDays size={12} /> Agendar
+                      </button>
+                      <button 
+                        onClick={() => handlePublishNow(post)}
+                        className="flex-1 py-1.5 bg-green-500/10 hover:bg-green-500/20 text-green-500 rounded text-xs font-bold transition-colors flex items-center justify-center gap-1"
+                      >
+                        <Send size={12} /> Publicar
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))
