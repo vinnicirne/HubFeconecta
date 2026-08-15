@@ -69,12 +69,13 @@ export async function POST(req: Request) {
 
     const generatedPosts = [];
 
-    // Para cobrir 24h, agendamos de 3 em 3 horas fixo:
-    // 00:00, 03:00, 06:00, 09:00, 12:00, 15:00, 18:00, 21:00
-    const scheduledHours = [0, 3, 6, 9, 12, 15, 18, 21];
-    console.log("🔥 Cobertura 24h Ativada! Horários fixos de 3 em 3h:", scheduledHours);
+    const scheduledHours = [8, 10, 12, 14, 16, 18, 20, 22]; // Horários em BRT (fuso horário do Brasil)
+    console.log("🔥 Cobertura 24h Ativada! Horários fixos:", scheduledHours);
 
-    const tomorrow = new Date();
+    // Ajusta para pegar o 'amanhã' no fuso horário do Brasil (UTC-3)
+    const now = new Date();
+    now.setHours(now.getHours() - 3); // Simula o fuso do Brasil
+    const tomorrow = new Date(now);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     let currentIndex = 0;
@@ -105,10 +106,10 @@ export async function POST(req: Request) {
 
       const imageUrl = `${baseUrl}/api/og?${searchParams.toString()}`;
 
-      // 3. Define a data de agendamento usando a distribuição 24h
+      // 3. Define a data de agendamento usando a distribuição (considerando BRT = UTC-3)
       const scheduledDate = new Date(tomorrow);
       const hourForThisPost = scheduledHours[currentIndex % scheduledHours.length];
-      scheduledDate.setHours(hourForThisPost, 0, 0, 0);
+      scheduledDate.setHours(hourForThisPost + 3, 0, 0, 0); // Soma 3 horas para converter BRT -> UTC
       currentIndex++;
 
       // 4. Save to Supabase (marca como 'pending' e com a data agendada)
