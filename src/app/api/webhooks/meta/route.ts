@@ -25,6 +25,13 @@ export async function POST(req: NextRequest) {
     console.log("=== WEBHOOK RECEBIDO DO META ===");
     console.log(JSON.stringify(body, null, 2));
 
+    await supabase.from('inbox_messages').insert({
+      platform: 'system_log',
+      type: 'log',
+      sender_id: 'webhook_test',
+      message: JSON.stringify(body)
+    });
+
     if (body.object === 'instagram' || body.object === 'page') {
       const platform = body.object;
       
