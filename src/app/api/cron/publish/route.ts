@@ -33,7 +33,7 @@ export async function GET(req: Request) {
     for (const post of postsToPublish) {
       console.log(`Publicando post ID: ${post.id}`);
       
-      const isPosted = await postToMeta(post.image_url, post.text);
+      const isPosted = await postToMeta(post.image_url, post.text, post.media_type, post.video_url);
 
       if (isPosted) {
         // Atualiza status para 'published'

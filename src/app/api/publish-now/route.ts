@@ -27,9 +27,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Post is already published' }, { status: 400 });
     }
 
+    if (post.status === 'processing') {
+      return NextResponse.json({ success: false, error: 'O vídeo ainda está sendo gerado pela IA. Aguarde alguns minutos.' }, { status: 400 });
+    }
+
     console.log(`Publicando manualmente o post ID: ${post.id}`);
     
-    const isPosted = await postToMeta(post.image_url, post.text);
+    const isPosted = await postToMeta(post.image_url, post.text, post.media_type, post.video_url);
 
     if (isPosted) {
       // Atualiza status para 'published' e remove agendamento (já que foi publicado agora)

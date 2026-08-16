@@ -61,7 +61,7 @@ async function getPeakHours(token: string): Promise<number[] | null> {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { type } = body; // Can be a specific type or 'all'
+    const { type, mediaType = 'IMAGE' } = body; // mediaType: 'IMAGE' | 'REEL'
 
     const typesToGenerate = type === 'all' 
       ? ['promessa', 'devocional', 'data', 'motivacional', 'pregacao', 'devocional', 'promessa', 'motivacional'] as const
@@ -82,9 +82,11 @@ export async function POST(req: Request) {
 
     for (const t of typesToGenerate) {
       // 1. Generate text with Gemini
-      const content = await generateContent(t);
+      const content = await generateContent(t, mediaType as 'IMAGE' | 'REEL');
       
-      // 2. Prepare OG Image URL params
+      // 2. Prepare OG Image URL params (Only for IMAGE)
+      let imageUrl = null;
+      if (mediaType === 'IMAGE') {
       let baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://hubfeconecta.vercel.app';
       if (baseUrl.includes('localhost')) {
         baseUrl = 'https://hubfeconecta.vercel.app';
@@ -108,7 +110,8 @@ export async function POST(req: Request) {
         searchParams.set('dateTitle', getFormattedDateTitle(tomorrow));
       }
 
-      const imageUrl = `${baseUrl}/api/og?${searchParams.toString()}`;
+      imageUrl = `${baseUrl}/api/og?${searchParams.toString()}`;
+    }
 
       // 3. Define a data de agendamento usando a distribuição (considerando BRT = UTC-3)
       const scheduledDate = new Date(tomorrow);
@@ -125,7 +128,8 @@ export async function POST(req: Request) {
           reference: content.reference || null,
           author: content.author || null,
           image_url: imageUrl,
-          status: 'pending',
+          media_type: mediaType,
+          status: mediaType === 'REEL' ? 'processing' : 'pending', // Reels start as processing until VPS finishes
           scheduled_for: scheduledDate.toISOString() // Automático!
         })
         .select()
@@ -134,6 +138,23 @@ export async function POST(req: Request) {
       if (error) {
         console.error('Supabase Insert Error:', error);
         throw new Error('Database insertion failed');
+      }
+
+      // If it's a REEL, call the VPS renderer!
+      if (mediaType === 'REEL') {
+        try {
+          fetch('http://209.50.229.10:3001/render', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: data.id,
+              script: content.text,
+              background_keyword: content.background_keyword || 'aesthetic'
+            })
+          }).catch(err => console.error("VPS Render error:", err)); // fire and forget
+        } catch (e) {
+          console.error("VPS render request error:", e);
+        }
       }
 
       generatedPosts.push(data);

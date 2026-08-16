@@ -145,6 +145,8 @@ function TabDashboard({ posts, setPosts, showDialog }: { posts: any[], setPosts:
     return d;
   });
 
+  const [isGenerating, setIsGenerating] = useState(false);
+
   // Estado do Modal de Agendamento
   const [scheduleModal, setScheduleModal] = useState<{isOpen: boolean, post: any, dateVal: string}>({
     isOpen: false,
@@ -220,6 +222,33 @@ function TabDashboard({ posts, setPosts, showDialog }: { posts: any[], setPosts:
     }
   };
 
+  const handleGenerateBatch = async () => {
+    // We use a prompt dialog to choose the type. 
+    // Wait, the showDialog doesn't support multiple buttons easily. Let's use a native prompt or a confirm where "OK"=Reel, "Cancel"=Image?
+    // Better: let's just make it simpler.
+    const typeStr = await showDialog('prompt', 'Escolha o Formato', 'Digite REEL para gerar um lote de vídeos narrados, ou deixe em branco para IMAGENS (Feed):', '');
+    const mediaType = (typeStr && typeStr.toUpperCase() === 'REEL') ? 'REEL' : 'IMAGE';
+
+    setIsGenerating(true);
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'all', mediaType })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPosts([...data.posts, ...posts]);
+        showDialog('alert', 'Sucesso', \`Lote de \${mediaType}S gerado com sucesso! Se foram Reels, eles estão sendo processados.\`);
+      } else {
+        showDialog('alert', 'Erro', 'Erro ao gerar: ' + data.error);
+      }
+    } catch (e: any) {
+      showDialog('alert', 'Erro', 'Erro fatal: ' + e.message);
+    }
+    setIsGenerating(false);
+  };
+
   const handlePublishNow = async (post: any) => {
     const ok = await showDialog('confirm', 'Publicar Agora', 'Deseja realmente publicar essa arte no seu Instagram agora? Isso pode demorar até 1 minuto.');
     if (ok) {
@@ -275,9 +304,13 @@ function TabDashboard({ posts, setPosts, showDialog }: { posts: any[], setPosts:
           <h2 className="text-3xl font-bold text-white mb-2">Planner Calendário</h2>
           <p className="text-slate-400">Arraste a visão geral para o nível profissional. Agende o que vai ao ar.</p>
         </div>
-        <button className="bg-amber-500 hover:bg-amber-400 text-black font-bold py-2 px-6 rounded-lg shadow-[0_0_15px_rgba(245,158,11,0.3)] transition-all flex items-center gap-2">
+        <button 
+          onClick={handleGenerateBatch}
+          disabled={isGenerating}
+          className="bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black font-bold py-2 px-6 rounded-lg shadow-[0_0_15px_rgba(245,158,11,0.3)] transition-all flex items-center gap-2"
+        >
           <CalendarDays size={18} />
-          Gerar Novo Lote (Rascunhos)
+          {isGenerating ? 'Gerando...' : 'Gerar Novo Lote (Rascunhos)'}
         </button>
       </header>
 

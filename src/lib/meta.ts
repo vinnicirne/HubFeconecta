@@ -1,4 +1,4 @@
-export async function postToMeta(imageUrl: string, text: string) {
+export async function postToMeta(imageUrl: string, text: string, mediaType: 'IMAGE' | 'REEL' = 'IMAGE', videoUrl?: string) {
   const token = process.env.META_PAGE_TOKEN;
   if (!token) {
     console.error("Faltando META_PAGE_TOKEN");
@@ -20,24 +20,45 @@ export async function postToMeta(imageUrl: string, text: string) {
       }
     }
 
-    console.log("Enviando para a pagina do Facebook...");
-    const fbRes = await fetch(`https://graph.facebook.com/v20.0/me/photos`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: imageUrl, message: text, access_token: token })
-    });
-    const fbData = await fbRes.json();
-    if (fbData.error) {
-      console.error("Erro Facebook:", fbData.error);
-      return false;
+    if (mediaType === 'IMAGE') {
+      console.log("Enviando imagem para a pagina do Facebook...");
+      const fbRes = await fetch(`https://graph.facebook.com/v20.0/me/photos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: imageUrl, message: text, access_token: token })
+      });
+      const fbData = await fbRes.json();
+      if (fbData.error) {
+        console.error("Erro Facebook:", fbData.error);
+        // Continue to IG even if FB fails
+      }
+    } else if (mediaType === 'REEL') {
+      console.log("Enviando Reel para o Facebook (videos)...");
+      const fbRes = await fetch(`https://graph.facebook.com/v20.0/me/videos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file_url: videoUrl, description: text, access_token: token })
+      });
+      const fbData = await fbRes.json();
+      if (fbData.error) {
+        console.error("Erro Facebook Videos:", fbData.error);
+      }
     }
-    
     if (igUserId) {
-      console.log("Subindo imagem pro Instagram...");
+      console.log(`Subindo ${mediaType} pro Instagram...`);
+      
+      const mediaPayload: any = { caption: text, access_token: token };
+      if (mediaType === 'REEL') {
+        mediaPayload.media_type = 'REELS';
+        mediaPayload.video_url = videoUrl;
+      } else {
+        mediaPayload.image_url = imageUrl;
+      }
+
       const containerReq = await fetch(`https://graph.facebook.com/v20.0/${igUserId}/media`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image_url: imageUrl, caption: text, access_token: token })
+        body: JSON.stringify(mediaPayload)
       });
       const containerRes = await containerReq.json();
       if (containerRes.error) {
@@ -47,9 +68,11 @@ export async function postToMeta(imageUrl: string, text: string) {
       const creationId = containerRes?.id;
 
       if (creationId) {
-        console.log("Aguardando o Instagram processar a imagem...");
+        console.log(`Aguardando o Instagram processar a midia (${mediaType})...`);
         let isReady = false;
-        for (let i = 0; i < 10; i++) {
+        // Video might take longer, give it 15 loops (45s)
+        const loops = mediaType === 'REEL' ? 15 : 10;
+        for (let i = 0; i < loops; i++) {
           await new Promise(r => setTimeout(r, 3000));
           const statusReq = await fetch(`https://graph.facebook.com/v20.0/${creationId}?fields=status_code&access_token=${token}`);
           const statusRes = await statusReq.json();
