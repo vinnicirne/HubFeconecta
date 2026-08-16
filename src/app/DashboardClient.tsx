@@ -24,6 +24,14 @@ import {
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
+export const getSecureVideoUrl = (url: string) => {
+  if (!url) return url;
+  if (url.includes('209.50.229.10:3005/videos')) {
+    return url.replace('http://209.50.229.10:3005/videos', '/vps-videos');
+  }
+  return url;
+};
+
 export default function DashboardClient({ initialPosts }: { initialPosts: any[] }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [posts, setPosts] = useState(initialPosts);
@@ -364,7 +372,7 @@ function TabDashboard({ posts, setPosts, showDialog }: { posts: any[], setPosts:
                 <div key={post.id} className="bg-slate-900 border border-slate-700 hover:border-amber-500/50 rounded-xl overflow-hidden transition-all group cursor-pointer" onClick={() => setPreviewModal(post)}>
                   {post.media_type === 'REEL' ? (
                     post.video_url ? (
-                      <video src={post.video_url} className="w-full aspect-square object-cover opacity-80 group-hover:opacity-100 transition-opacity" controls controlsList="nodownload" />
+                      <video src={getSecureVideoUrl(post.video_url)} className="w-full aspect-square object-cover opacity-80 group-hover:opacity-100 transition-opacity" controls controlsList="nodownload" />
                     ) : (
                       <div className="w-full aspect-square bg-slate-800 flex flex-col items-center justify-center opacity-80">
                         <RefreshCw className="animate-spin text-amber-500 mb-2" size={24} />
@@ -465,7 +473,7 @@ function TabDashboard({ posts, setPosts, showDialog }: { posts: any[], setPosts:
                           <div className="relative aspect-square">
                             {post.media_type === 'REEL' ? (
                               post.video_url ? (
-                                <video src={post.video_url} className="w-full h-full object-cover" muted loop playsInline onMouseOver={(e) => (e.target as HTMLVideoElement).play()} onMouseOut={(e) => (e.target as HTMLVideoElement).pause()} />
+                                <video src={getSecureVideoUrl(post.video_url)} className="w-full h-full object-cover" muted loop playsInline onMouseOver={(e) => (e.target as HTMLVideoElement).play()} onMouseOut={(e) => (e.target as HTMLVideoElement).pause()} />
                               ) : (
                                 <div className="w-full h-full bg-slate-800 flex flex-col items-center justify-center">
                                   <RefreshCw className="animate-spin text-amber-500 mb-2" size={20} />
@@ -524,7 +532,7 @@ function TabDashboard({ posts, setPosts, showDialog }: { posts: any[], setPosts:
           <div className="max-w-3xl max-h-[90vh] flex flex-col items-center animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
             {previewModal.media_type === 'REEL' ? (
               previewModal.video_url ? (
-                <video src={previewModal.video_url} className="max-w-full max-h-[70vh] rounded-xl shadow-[0_0_40px_rgba(0,0,0,0.5)] border border-slate-800" controls autoPlay controlsList="nodownload" />
+                <video src={getSecureVideoUrl(previewModal.video_url)} className="max-w-full max-h-[70vh] rounded-xl shadow-[0_0_40px_rgba(0,0,0,0.5)] border border-slate-800" controls autoPlay controlsList="nodownload" />
               ) : (
                 <div className="w-[350px] h-[600px] bg-[#111116] rounded-xl flex flex-col items-center justify-center shadow-2xl border border-slate-800">
                    <RefreshCw className="animate-spin text-amber-500 mb-6" size={56} />
@@ -566,7 +574,7 @@ function TabDashboard({ posts, setPosts, showDialog }: { posts: any[], setPosts:
                 <div className="flex gap-4 items-center bg-slate-900/50 p-3 rounded-xl border border-slate-800">
                   {scheduleModal.post.media_type === 'REEL' ? (
                     scheduleModal.post.video_url ? (
-                       <video src={scheduleModal.post.video_url} className="w-16 h-16 object-cover rounded-lg" autoPlay muted loop />
+                       <video src={getSecureVideoUrl(scheduleModal.post.video_url)} className="w-16 h-16 object-cover rounded-lg" autoPlay muted loop />
                     ) : (
                        <div className="w-16 h-16 bg-slate-800 rounded-lg flex items-center justify-center"><Play size={16} className="text-amber-500" /></div>
                     )
