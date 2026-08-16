@@ -242,17 +242,33 @@ function TabDashboard({ posts, setPosts, showDialog }: { posts: any[], setPosts:
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ type: 'all', mediaType, isAuto: false, hourIndex: i })
         });
+        
+        // Verifica se a Vercel retornou um HTML de erro (ex: 504 Gateway Timeout)
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          const textError = await res.text();
+          console.error("Vercel error:", res.status, textError);
+          showDialog('alert', 'Servidor Sobrecarregado', 'A Vercel ou o Google demoraram muito para responder (Erro ' + res.status + '). A geração foi pausada para proteger o sistema. Tente novamente em alguns instantes.');
+          break; // Sai do loop para não metralhar a API caída
+        }
+
         const data = await res.json();
         
-        if (data.success && data.posts.length > 0) {
+        if (data.success && data.posts && data.posts.length > 0) {
           generatedCount++;
           // Atualiza a tela na hora com o post recém gerado!
           setPosts((prev: any[]) => [data.posts[0], ...prev]);
         } else {
           console.error("Erro no post " + i, data.error);
+          
+          // Se for erro de cota ou sobrecarga do Google (503), avisa o usuário e para o loop
+          if (data.error && data.error.includes('503')) {
+            showDialog('alert', 'Aviso do Google', 'O robô de Inteligência Artificial do Google (Gemini) está com altíssima demanda neste momento e recusou a conexão. Aguarde 2 minutinhos e tente gerar novamente!');
+            break;
+          }
         }
 
-        // Aguarda 4 segundos entre as requisições para proteger a cota do Gemini, mas com o painel no controle!
+        // Aguarda 4 segundos entre as requisições para proteger a cota do Gemini
         if (i < 7) {
           await new Promise(r => setTimeout(r, 4000));
         }
