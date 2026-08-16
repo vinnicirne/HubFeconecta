@@ -154,6 +154,9 @@ function TabDashboard({ posts, setPosts, showDialog }: { posts: any[], setPosts:
     dateVal: ''
   });
 
+  // Estado do Modal de Visualização (Zoom)
+  const [previewModal, setPreviewModal] = useState<any>(null);
+
   const handleDelete = async (id: string) => {
     const ok = await showDialog('confirm', 'Excluir Post', 'Tem certeza que deseja excluir esta postagem?');
     if (ok) {
@@ -327,7 +330,7 @@ function TabDashboard({ posts, setPosts, showDialog }: { posts: any[], setPosts:
               <p className="text-slate-500 text-sm text-center mt-4">Nenhum post de rascunho.</p>
             ) : (
               unscheduledPosts.map(post => (
-                <div key={post.id} className="bg-slate-900 border border-slate-700 hover:border-amber-500/50 rounded-xl overflow-hidden transition-all group">
+                <div key={post.id} className="bg-slate-900 border border-slate-700 hover:border-amber-500/50 rounded-xl overflow-hidden transition-all group cursor-pointer" onClick={() => setPreviewModal(post)}>
                   {post.media_type === 'REEL' ? (
                     post.video_url ? (
                       <video src={post.video_url} className="w-full aspect-square object-cover opacity-80 group-hover:opacity-100 transition-opacity" controls controlsList="nodownload" />
@@ -343,17 +346,17 @@ function TabDashboard({ posts, setPosts, showDialog }: { posts: any[], setPosts:
                   <div className="p-3 bg-slate-900">
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-[10px] font-bold uppercase text-amber-500">{post.type}</span>
-                      <button onClick={() => handleDelete(post.id)} className="text-slate-500 hover:text-red-500 transition-colors"><Trash2 size={14}/></button>
+                      <button onClick={(e) => { e.stopPropagation(); handleDelete(post.id); }} className="text-slate-500 hover:text-red-500 transition-colors"><Trash2 size={14}/></button>
                     </div>
                     <div className="flex gap-2 w-full">
                       <button 
-                        onClick={() => handleScheduleClick(post)}
+                        onClick={(e) => { e.stopPropagation(); handleScheduleClick(post); }}
                         className="flex-1 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 rounded text-xs font-bold transition-colors flex items-center justify-center gap-1"
                       >
                         <CalendarDays size={12} /> Agendar
                       </button>
                       <button 
-                        onClick={() => handlePublishNow(post)}
+                        onClick={(e) => { e.stopPropagation(); handlePublishNow(post); }}
                         className="flex-1 py-1.5 bg-green-500/10 hover:bg-green-500/20 text-green-500 rounded text-xs font-bold transition-colors flex items-center justify-center gap-1"
                       >
                         <Send size={12} /> Publicar
@@ -422,7 +425,7 @@ function TabDashboard({ posts, setPosts, showDialog }: { posts: any[], setPosts:
                       const isPublished = post.status === 'published';
 
                       return (
-                        <div key={post.id} className={`rounded-lg border overflow-hidden group transition-all hover:scale-105 cursor-pointer ${isPublished ? 'border-green-500/30' : 'border-blue-500/30'}`}>
+                        <div key={post.id} className={`rounded-lg border overflow-hidden group transition-all hover:scale-105 cursor-pointer ${isPublished ? 'border-green-500/30' : 'border-blue-500/30'}`} onClick={() => setPreviewModal(post)}>
                           
                           <div className={`text-[10px] font-bold px-2 py-1 text-center flex items-center justify-center gap-1 ${isPublished ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'}`}>
                             {isPublished ? <span>PUBLICADO {timeStr}</span> : <><Clock size={10} /> {timeStr}</>}
@@ -446,11 +449,11 @@ function TabDashboard({ posts, setPosts, showDialog }: { posts: any[], setPosts:
                             <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity p-2">
                               {!isPublished && (
                                 <>
-                                  <button onClick={() => handleScheduleClick(post)} className="w-full bg-slate-800 text-white text-[10px] py-1 rounded hover:bg-slate-700">Mudar Hora</button>
-                                  <button onClick={() => handleUnschedule(post)} className="w-full bg-red-500/20 text-red-400 text-[10px] py-1 rounded hover:bg-red-500/40">Desagendar</button>
+                                  <button onClick={(e) => { e.stopPropagation(); handleScheduleClick(post); }} className="w-full bg-slate-800 text-white text-[10px] py-1 rounded hover:bg-slate-700">Mudar Hora</button>
+                                  <button onClick={(e) => { e.stopPropagation(); handleUnschedule(post); }} className="w-full bg-red-500/20 text-red-400 text-[10px] py-1 rounded hover:bg-red-500/40">Desagendar</button>
                                 </>
                               )}
-                              <button onClick={() => handleEdit(post)} className="w-full bg-amber-500/20 text-amber-500 text-[10px] py-1 rounded hover:bg-amber-500/40">Editar Texto</button>
+                              <button onClick={(e) => { e.stopPropagation(); handleEdit(post); }} className="w-full bg-amber-500/20 text-amber-500 text-[10px] py-1 rounded hover:bg-amber-500/40">Editar Texto</button>
                             </div>
                           </div>
                           
@@ -482,6 +485,34 @@ function TabDashboard({ posts, setPosts, showDialog }: { posts: any[], setPosts:
         </div>
       </div>
       
+      {/* MODAL DE ZOOM / PREVIEW */}
+      {previewModal && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[200] flex items-center justify-center p-4" onClick={() => setPreviewModal(null)}>
+          <button className="absolute top-6 right-6 text-white hover:text-amber-500 p-2 transition-colors"><X size={36} /></button>
+          
+          <div className="max-w-3xl max-h-[90vh] flex flex-col items-center animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+            {previewModal.media_type === 'REEL' ? (
+              previewModal.video_url ? (
+                <video src={previewModal.video_url} className="max-w-full max-h-[70vh] rounded-xl shadow-[0_0_40px_rgba(0,0,0,0.5)] border border-slate-800" controls autoPlay controlsList="nodownload" />
+              ) : (
+                <div className="w-[350px] h-[600px] bg-[#111116] rounded-xl flex flex-col items-center justify-center shadow-2xl border border-slate-800">
+                   <RefreshCw className="animate-spin text-amber-500 mb-6" size={56} />
+                   <h3 className="text-2xl font-bold text-white mb-2">Vídeo em Produção</h3>
+                   <p className="text-slate-400 text-center px-8 text-sm">A Inteligência Artificial está narrando o roteiro, encontrando um vídeo cinematográfico e realizando a renderização. Isso pode levar alguns minutos.</p>
+                </div>
+              )
+            ) : (
+              <img src={previewModal.image_url} className="max-w-full max-h-[70vh] object-contain rounded-xl shadow-[0_0_40px_rgba(0,0,0,0.5)] border border-slate-800" />
+            )}
+            
+            <div className="mt-8 bg-[#111116]/80 backdrop-blur-md p-5 rounded-2xl border border-slate-800 text-center w-full shadow-2xl">
+              <p className="text-sm md:text-base text-amber-500 font-bold uppercase mb-2">Roteiro / Texto Gerado</p>
+              <p className="text-lg text-white font-medium italic">"{previewModal.text}"</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL DE AGENDAMENTO */}
       {scheduleModal.isOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
