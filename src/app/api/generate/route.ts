@@ -67,7 +67,7 @@ export async function POST(req: Request) {
     const typesSequence = ['promessa', 'devocional', 'data', 'motivacional', 'pregacao', 'devocional', 'promessa', 'motivacional'] as const;
 
     // Determina o tipo. Se for 'auto', escolhe aleatoriamente ou sequencial (aqui escolhe baseado no timestamp para variar).
-    let t: string = type;
+    let t: any = type;
     if (type === 'all') {
       t = typesSequence[hourIndex % typesSequence.length];
     } else if (type === 'auto') {

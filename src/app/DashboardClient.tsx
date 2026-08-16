@@ -247,7 +247,7 @@ function TabDashboard({ posts, setPosts, showDialog }: { posts: any[], setPosts:
         if (data.success && data.posts.length > 0) {
           generatedCount++;
           // Atualiza a tela na hora com o post recém gerado!
-          setPosts(prev => [data.posts[0], ...prev]);
+          setPosts((prev: any[]) => [data.posts[0], ...prev]);
         } else {
           console.error("Erro no post " + i, data.error);
         }
