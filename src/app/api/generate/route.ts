@@ -143,7 +143,7 @@ export async function POST(req: Request) {
       // If it's a REEL, call the VPS renderer!
       if (mediaType === 'REEL') {
         try {
-          fetch('http://209.50.229.10:3001/render', {
+          fetch('http://209.50.229.10:3005/render', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
