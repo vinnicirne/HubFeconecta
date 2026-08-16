@@ -244,46 +244,41 @@ function TabDashboard({ posts, setPosts, showDialog }: { posts: any[], setPosts:
     let generatedCount = 0;
     
     try {
-      for (let i = 0; i < 8; i++) {
-        const res = await fetch('/api/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'all', mediaType, isAuto: false, hourIndex: i })
-        });
-        
-        // Verifica se a Vercel retornou um HTML de erro (ex: 504 Gateway Timeout)
-        const contentType = res.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          const textError = await res.text();
-          console.error("Vercel error:", res.status, textError);
-          showDialog('alert', 'Servidor Sobrecarregado', 'A Vercel ou o Google demoraram muito para responder (Erro ' + res.status + '). A geração foi pausada para proteger o sistema. Tente novamente em alguns instantes.');
-          break; // Sai do loop para não metralhar a API caída
-        }
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'auto', mediaType, isAuto: false, hourIndex: Math.floor(Math.random() * 8) })
+      });
+      
+      // Verifica se a Vercel retornou um HTML de erro (ex: 504 Gateway Timeout)
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const textError = await res.text();
+        console.error("Vercel error:", res.status, textError);
+        showDialog('alert', 'Servidor Sobrecarregado', 'A Vercel ou o Google demoraram muito para responder (Erro ' + res.status + '). Tente novamente em alguns instantes.');
+        setIsGenerating(false);
+        return;
+      }
 
-        const data = await res.json();
+      const data = await res.json();
+      
+      if (data.success && data.posts && data.posts.length > 0) {
+        generatedCount++;
+        // Atualiza a tela na hora com o post recém gerado!
+        setPosts((prev: any[]) => [data.posts[0], ...prev]);
+      } else {
+        console.error("Erro no post", data.error);
         
-        if (data.success && data.posts && data.posts.length > 0) {
-          generatedCount++;
-          // Atualiza a tela na hora com o post recém gerado!
-          setPosts((prev: any[]) => [data.posts[0], ...prev]);
+        // Se for erro de cota (429) ou sobrecarga do Google (503)
+        if (data.error && (data.error.includes('503') || data.error.includes('429') || data.error.includes('Too Many Requests'))) {
+          showDialog('alert', 'Aviso do Google', 'O robô de Inteligência Artificial do Google (Gemini) atingiu o limite de requisições gratuitas por minuto. Aguarde cerca de 1 minuto e tente novamente!');
         } else {
-          console.error("Erro no post " + i, data.error);
-          
-          // Se for erro de cota (429) ou sobrecarga do Google (503), avisa o usuário e para o loop
-          if (data.error && (data.error.includes('503') || data.error.includes('429') || data.error.includes('Too Many Requests'))) {
-            showDialog('alert', 'Aviso do Google', 'O robô de Inteligência Artificial do Google (Gemini) atingiu o limite de requisições gratuitas por minuto. Aguarde cerca de 1 a 2 minutos e tente novamente!');
-            break;
-          }
-        }
-
-        // Aguarda 6 segundos entre as requisições para proteger a cota do Gemini (15 RPM limite gratuito)
-        if (i < 7) {
-          await new Promise(r => setTimeout(r, 6000));
+          showDialog('alert', 'Erro', 'Falha ao gerar o conteúdo: ' + data.error);
         }
       }
       
       if (generatedCount > 0) {
-        showDialog('alert', 'Sucesso', `Lote de ${mediaType}S gerado com sucesso! Foram criados ${generatedCount} posts.`);
+        showDialog('alert', 'Sucesso', `Novo ${mediaType} gerado com sucesso e adicionado aos Rascunhos!`);
       }
     } catch (e: any) {
       showDialog('alert', 'Erro', 'Erro fatal: ' + e.message);
@@ -352,7 +347,7 @@ function TabDashboard({ posts, setPosts, showDialog }: { posts: any[], setPosts:
           className="bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black font-bold py-2 px-6 rounded-lg shadow-[0_0_15px_rgba(245,158,11,0.3)] transition-all flex items-center gap-2"
         >
           <CalendarDays size={18} />
-          {isGenerating ? 'Gerando...' : 'Gerar Novo Lote (Rascunhos)'}
+          {isGenerating ? 'Gerando...' : 'Gerar Novo Vídeo/Post'}
         </button>
       </header>
 
