@@ -34,11 +34,13 @@ Estrutura JSON esperada:
 export async function generateContent(type: 'promessa' | 'devocional' | 'data' | 'motivacional' | 'pregacao', mediaType: 'IMAGE' | 'REEL' = 'IMAGE') {
   try {
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash-latest',
-      systemInstruction: mediaType === 'REEL' ? SYSTEM_PROMPT_REEL : SYSTEM_PROMPT_IMAGE
+      model: 'gemini-pro',
     });
 
-    const result = await model.generateContent(`Gere um conteúdo do tipo: ${type}`);
+    const systemPrompt = mediaType === 'REEL' ? SYSTEM_PROMPT_REEL : SYSTEM_PROMPT_IMAGE;
+    const finalPrompt = `${systemPrompt}\n\n[USER REQUEST]: Gere um conteúdo do tipo: ${type}`;
+
+    const result = await model.generateContent(finalPrompt);
     const text = result.response.text().replace(/```json/g, '').replace(/```/g, '');
     
     return JSON.parse(text);
