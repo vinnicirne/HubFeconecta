@@ -1,11 +1,25 @@
 export async function postToMeta(imageUrl: string, text: string) {
   const token = process.env.META_PAGE_TOKEN;
   if (!token) {
-    console.log("Nenhum META_PAGE_TOKEN encontrado. Pulando envio pras redes.");
+    console.error("Faltando META_PAGE_TOKEN");
     return false;
   }
 
   try {
+    let igUserId = process.env.META_IG_USER_ID;
+    
+    // Se não tiver o ID nas variáveis, busca na API igual o test_meta.mjs fez
+    if (!igUserId) {
+      const igReq = await fetch(`https://graph.facebook.com/v20.0/me?fields=instagram_business_account&access_token=${token}`);
+      const igRes = await igReq.json();
+      igUserId = igRes?.instagram_business_account?.id;
+      
+      if (!igUserId) {
+        console.error("Não foi possível encontrar o ID da conta do Instagram atrelada à página.");
+        return false;
+      }
+    }
+
     console.log("Enviando para a pagina do Facebook...");
     const fbRes = await fetch(`https://graph.facebook.com/v20.0/me/photos`, {
       method: 'POST',
@@ -18,14 +32,9 @@ export async function postToMeta(imageUrl: string, text: string) {
       return false;
     }
     
-    console.log("Procurando a conta do Instagram...");
-    const igReq = await fetch(`https://graph.facebook.com/v20.0/me?fields=instagram_business_account&access_token=${token}`);
-    const igRes = await igReq.json();
-    const igId = igRes?.instagram_business_account?.id;
-
-    if (igId) {
+    if (igUserId) {
       console.log("Subindo imagem pro Instagram...");
-      const containerReq = await fetch(`https://graph.facebook.com/v20.0/${igId}/media`, {
+      const containerReq = await fetch(`https://graph.facebook.com/v20.0/${igUserId}/media`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image_url: imageUrl, caption: text, access_token: token })
@@ -53,7 +62,7 @@ export async function postToMeta(imageUrl: string, text: string) {
 
         if (isReady) {
           console.log("Publicando no Instagram...");
-          const pubReq = await fetch(`https://graph.facebook.com/v20.0/${igId}/media_publish`, {
+          const pubReq = await fetch(`https://graph.facebook.com/v20.0/${igUserId}/media_publish`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ creation_id: creationId, access_token: token })
