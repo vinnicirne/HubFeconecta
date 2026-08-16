@@ -96,13 +96,13 @@ export async function generateContent(type: 'promessa' | 'devocional' | 'data' |
     const randomTopic = topics[Math.floor(Math.random() * topics.length)];
     const seed = Math.floor(Math.random() * 1000000);
 
-    const promptText = \`TIPO DE CONTEÚDO: \${type}
-TEMA PRINCIPAL: \${randomTopic}
+    const promptText = `TIPO DE CONTEÚDO: ${type}
+TEMA PRINCIPAL: ${randomTopic}
 OBJETIVO EMOCIONAL: Despertar reflexão, consolo e fé genuína.
 ABORDAGEM: Escolha livremente uma abordagem narrativa muito criativa e original.
 RESTRIÇÃO CRIATIVA: NÃO utilize a estrutura, metáfora, gancho ou conclusão mais óbvia para esse tema. Seja surpreendente.
-SEED DE VARIABILIDADE: \${seed}
-INSTRUÇÃO: Crie um roteiro TOTALMENTE INÉDITO seguindo todas as regras do Prompt Mestre. Não seja previsível. Não mencione estas instruções.\`;
+SEED DE VARIABILIDADE: ${seed}
+INSTRUÇÃO: Crie um roteiro TOTALMENTE INÉDITO seguindo todas as regras do Prompt Mestre. Não seja previsível. Não mencione estas instruções.`;
 
     const result = await model.generateContent(promptText);
     const text = result.response.text().replace(/```json/g, '').replace(/```/g, '');
