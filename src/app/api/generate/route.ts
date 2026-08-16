@@ -159,9 +159,9 @@ export async function POST(req: Request) {
 
       generatedPosts.push(data);
 
-      // Esperar 4 segundos antes de pedir o próximo para não estourar a cota gratuita do Gemini (15 RPM)
+      // Esperar 1.5 segundos antes de pedir o próximo para não dar Timeout na Vercel (limite 60s)
       if (currentIndex < typesToGenerate.length) {
-        await new Promise(r => setTimeout(r, 4000));
+        await new Promise(r => setTimeout(r, 1500));
       }
     }
 
