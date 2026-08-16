@@ -158,6 +158,11 @@ export async function POST(req: Request) {
       }
 
       generatedPosts.push(data);
+
+      // Esperar 4 segundos antes de pedir o próximo para não estourar a cota gratuita do Gemini (15 RPM)
+      if (currentIndex < typesToGenerate.length) {
+        await new Promise(r => setTimeout(r, 4000));
+      }
     }
 
     return NextResponse.json({ success: true, posts: generatedPosts });
