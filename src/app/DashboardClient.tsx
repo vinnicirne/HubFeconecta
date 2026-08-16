@@ -233,18 +233,33 @@ function TabDashboard({ posts, setPosts, showDialog }: { posts: any[], setPosts:
     const mediaType = (typeStr && typeStr.toUpperCase() === 'REEL') ? 'REEL' : 'IMAGE';
 
     setIsGenerating(true);
+    let generatedCount = 0;
+    
     try {
-      const res = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'all', mediaType })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setPosts([...data.posts, ...posts]);
-        showDialog('alert', 'Sucesso', `Lote de ${mediaType}S gerado com sucesso! Se foram Reels, eles estão sendo processados.`);
-      } else {
-        showDialog('alert', 'Erro', 'Erro ao gerar: ' + data.error);
+      for (let i = 0; i < 8; i++) {
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'all', mediaType, isAuto: false, hourIndex: i })
+        });
+        const data = await res.json();
+        
+        if (data.success && data.posts.length > 0) {
+          generatedCount++;
+          // Atualiza a tela na hora com o post recém gerado!
+          setPosts(prev => [data.posts[0], ...prev]);
+        } else {
+          console.error("Erro no post " + i, data.error);
+        }
+
+        // Aguarda 4 segundos entre as requisições para proteger a cota do Gemini, mas com o painel no controle!
+        if (i < 7) {
+          await new Promise(r => setTimeout(r, 4000));
+        }
+      }
+      
+      if (generatedCount > 0) {
+        showDialog('alert', 'Sucesso', `Lote de ${mediaType}S gerado com sucesso! Foram criados ${generatedCount} posts.`);
       }
     } catch (e: any) {
       showDialog('alert', 'Erro', 'Erro fatal: ' + e.message);

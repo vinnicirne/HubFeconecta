@@ -1,0 +1,77 @@
+{
+  "name": "Gerador de Reel Automático (Por Hora)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8,10,12,14,16,18,20,22 * * *"
+            }
+          ]
+        }
+      },
+      "id": "1",
+      "name": "Schedule Trigger (Horários de Pico)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://hubfeconecta.vercel.app/api/generate",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "type",
+              "value": "auto"
+            },
+            {
+              "name": "mediaType",
+              "value": "REEL"
+            },
+            {
+              "name": "isAuto",
+              "value": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2",
+      "name": "Gera e Publica Reel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        500,
+        300
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger (Horários de Pico)": {
+      "main": [
+        [
+          {
+            "node": "Gera e Publica Reel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a9b1c2d3",
+  "id": "auto-reel-hora"
+}

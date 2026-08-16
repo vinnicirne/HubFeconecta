@@ -61,32 +61,38 @@ async function getPeakHours(token: string): Promise<number[] | null> {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { type, mediaType = 'IMAGE' } = body; // mediaType: 'IMAGE' | 'REEL'
+    const { type, mediaType = 'IMAGE', isAuto = false, hourIndex = 0 } = body;
 
-    const typesToGenerate = type === 'all' 
-      ? ['promessa', 'devocional', 'data', 'motivacional', 'pregacao', 'devocional', 'promessa', 'motivacional'] as const
-      : [type as 'promessa' | 'devocional' | 'data' | 'motivacional' | 'pregacao'];
+    const scheduledHours = [8, 10, 12, 14, 16, 18, 20, 22]; // Horários em BRT
+    const typesSequence = ['promessa', 'devocional', 'data', 'motivacional', 'pregacao', 'devocional', 'promessa', 'motivacional'] as const;
 
-    const generatedPosts = [];
+    // Determina o tipo. Se for 'auto', escolhe aleatoriamente ou sequencial (aqui escolhe baseado no timestamp para variar).
+    let t: string = type;
+    if (type === 'all') {
+      t = typesSequence[hourIndex % typesSequence.length];
+    } else if (type === 'auto') {
+      t = typesSequence[Math.floor(Math.random() * typesSequence.length)];
+    }
 
-    const scheduledHours = [8, 10, 12, 14, 16, 18, 20, 22]; // Horários em BRT (fuso horário do Brasil)
-    console.log("🔥 Cobertura 24h Ativada! Horários fixos:", scheduledHours);
-
-    // Ajusta para pegar o 'amanhã' no fuso horário do Brasil (UTC-3)
+    // Define a data alvo (UTC-3 Brasil)
     const now = new Date();
-    now.setHours(now.getHours() - 3); // Simula o fuso do Brasil
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    now.setHours(now.getHours() - 3); 
+    
+    const targetDate = new Date(now);
+    // Se for gerado pelo painel (manual em lote), agenda para amanhã. Se for pelo n8n (isAuto), agenda para hoje.
+    if (!isAuto) {
+      targetDate.setDate(targetDate.getDate() + 1);
+    }
+    
+    const hourForThisPost = scheduledHours[hourIndex % scheduledHours.length];
+    targetDate.setHours(hourForThisPost + 3, 0, 0, 0); // Volta pra UTC
 
-    let currentIndex = 0;
-
-    for (const t of typesToGenerate) {
-      // 1. Generate text with Gemini
-      const content = await generateContent(t, mediaType as 'IMAGE' | 'REEL');
-      
-      // 2. Prepare OG Image URL params (Only for IMAGE)
-      let imageUrl = null;
-      if (mediaType === 'IMAGE') {
+    // 1. Generate text with Gemini
+    const content = await generateContent(t, mediaType as 'IMAGE' | 'REEL');
+    
+    // 2. Prepare OG Image URL params (Only for IMAGE)
+    let imageUrl = null;
+    if (mediaType === 'IMAGE') {
       let baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://hubfeconecta.vercel.app';
       if (baseUrl.includes('localhost')) {
         baseUrl = 'https://hubfeconecta.vercel.app';
@@ -107,65 +113,51 @@ export async function POST(req: Request) {
         searchParams.set('author', content.author);
       }
       if (t === 'data') {
-        searchParams.set('dateTitle', getFormattedDateTitle(tomorrow));
+        searchParams.set('dateTitle', getFormattedDateTitle(targetDate));
       }
 
       imageUrl = `${baseUrl}/api/og?${searchParams.toString()}`;
     }
 
-      // 3. Define a data de agendamento usando a distribuição (considerando BRT = UTC-3)
-      const scheduledDate = new Date(tomorrow);
-      const hourForThisPost = scheduledHours[currentIndex % scheduledHours.length];
-      scheduledDate.setHours(hourForThisPost + 3, 0, 0, 0); // Soma 3 horas para converter BRT -> UTC
-      currentIndex++;
+    // 4. Save to Supabase
+    const { data, error } = await supabase
+      .from('posts')
+      .insert({
+        type: t,
+        text: content.text,
+        reference: content.reference || null,
+        author: content.author || null,
+        image_url: imageUrl,
+        media_type: mediaType,
+        status: mediaType === 'REEL' ? 'processing' : 'pending',
+        scheduled_for: targetDate.toISOString()
+      })
+      .select()
+      .single();
 
-      // 4. Save to Supabase (marca como 'pending' e com a data agendada)
-      const { data, error } = await supabase
-        .from('posts')
-        .insert({
-          type: t,
-          text: content.text,
-          reference: content.reference || null,
-          author: content.author || null,
-          image_url: imageUrl,
-          media_type: mediaType,
-          status: mediaType === 'REEL' ? 'processing' : 'pending', // Reels start as processing until VPS finishes
-          scheduled_for: scheduledDate.toISOString() // Automático!
-        })
-        .select()
-        .single();
+    if (error) {
+      console.error('Supabase Insert Error:', error);
+      throw new Error('Database insertion failed');
+    }
 
-      if (error) {
-        console.error('Supabase Insert Error:', error);
-        throw new Error('Database insertion failed');
-      }
-
-      // If it's a REEL, call the VPS renderer!
-      if (mediaType === 'REEL') {
-        try {
-          fetch('http://209.50.229.10:3005/render', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id: data.id,
-              script: content.text,
-              background_keyword: content.background_keyword || 'aesthetic'
-            })
-          }).catch(err => console.error("VPS Render error:", err)); // fire and forget
-        } catch (e) {
-          console.error("VPS render request error:", e);
-        }
-      }
-
-      generatedPosts.push(data);
-
-      // Esperar 1.5 segundos antes de pedir o próximo para não dar Timeout na Vercel (limite 60s)
-      if (currentIndex < typesToGenerate.length) {
-        await new Promise(r => setTimeout(r, 1500));
+    // If it's a REEL, call the VPS renderer!
+    if (mediaType === 'REEL') {
+      try {
+        fetch('http://209.50.229.10:3005/render', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: data.id,
+            script: content.text,
+            background_keyword: content.background_keyword || 'aesthetic'
+          })
+        }).catch(err => console.error("VPS Render error:", err)); // fire and forget
+      } catch (e) {
+        console.error("VPS render request error:", e);
       }
     }
 
-    return NextResponse.json({ success: true, posts: generatedPosts });
+    return NextResponse.json({ success: true, posts: [data] });
 
   } catch (error: any) {
     console.error('Generation Route Error:', error);
