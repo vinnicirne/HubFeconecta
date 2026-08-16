@@ -239,7 +239,7 @@ function TabDashboard({ posts, setPosts, showDialog }: { posts: any[], setPosts:
       const data = await res.json();
       if (data.success) {
         setPosts([...data.posts, ...posts]);
-        showDialog('alert', 'Sucesso', \`Lote de \${mediaType}S gerado com sucesso! Se foram Reels, eles estão sendo processados.\`);
+        showDialog('alert', 'Sucesso', `Lote de ${mediaType}S gerado com sucesso! Se foram Reels, eles estão sendo processados.`);
       } else {
         showDialog('alert', 'Erro', 'Erro ao gerar: ' + data.error);
       }
