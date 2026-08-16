@@ -34,7 +34,7 @@ Estrutura JSON esperada:
 export async function generateContent(type: 'promessa' | 'devocional' | 'data' | 'motivacional' | 'pregacao', mediaType: 'IMAGE' | 'REEL' = 'IMAGE') {
   try {
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-1.5-flash-latest',
       systemInstruction: mediaType === 'REEL' ? SYSTEM_PROMPT_REEL : SYSTEM_PROMPT_IMAGE
     });
 
