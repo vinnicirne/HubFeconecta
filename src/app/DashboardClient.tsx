@@ -328,7 +328,18 @@ function TabDashboard({ posts, setPosts, showDialog }: { posts: any[], setPosts:
             ) : (
               unscheduledPosts.map(post => (
                 <div key={post.id} className="bg-slate-900 border border-slate-700 hover:border-amber-500/50 rounded-xl overflow-hidden transition-all group">
-                  <img src={post.image_url} className="w-full aspect-square object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                  {post.media_type === 'REEL' ? (
+                    post.video_url ? (
+                      <video src={post.video_url} className="w-full aspect-square object-cover opacity-80 group-hover:opacity-100 transition-opacity" controls controlsList="nodownload" />
+                    ) : (
+                      <div className="w-full aspect-square bg-slate-800 flex flex-col items-center justify-center opacity-80">
+                        <RefreshCw className="animate-spin text-amber-500 mb-2" size={24} />
+                        <span className="text-xs text-amber-500 font-bold">Gerando Vídeo...</span>
+                      </div>
+                    )
+                  ) : (
+                    <img src={post.image_url} className="w-full aspect-square object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                  )}
                   <div className="p-3 bg-slate-900">
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-[10px] font-bold uppercase text-amber-500">{post.type}</span>
@@ -418,7 +429,18 @@ function TabDashboard({ posts, setPosts, showDialog }: { posts: any[], setPosts:
                           </div>
                           
                           <div className="relative aspect-square">
-                            <img src={post.image_url} className="w-full h-full object-cover" />
+                            {post.media_type === 'REEL' ? (
+                              post.video_url ? (
+                                <video src={post.video_url} className="w-full h-full object-cover" muted loop playsInline onMouseOver={(e) => (e.target as HTMLVideoElement).play()} onMouseOut={(e) => (e.target as HTMLVideoElement).pause()} />
+                              ) : (
+                                <div className="w-full h-full bg-slate-800 flex flex-col items-center justify-center">
+                                  <RefreshCw className="animate-spin text-amber-500 mb-2" size={20} />
+                                  <span className="text-[10px] text-amber-500 font-bold text-center px-2">Processando Reel...</span>
+                                </div>
+                              )
+                            ) : (
+                              <img src={post.image_url} className="w-full h-full object-cover" />
+                            )}
                             
                             {/* Hover Actions */}
                             <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity p-2">
@@ -480,7 +502,15 @@ function TabDashboard({ posts, setPosts, showDialog }: { posts: any[], setPosts:
             <div className="p-6 space-y-6">
               {scheduleModal.post && (
                 <div className="flex gap-4 items-center bg-slate-900/50 p-3 rounded-xl border border-slate-800">
-                  <img src={scheduleModal.post.image_url} className="w-16 h-16 object-cover rounded-lg" />
+                  {scheduleModal.post.media_type === 'REEL' ? (
+                    scheduleModal.post.video_url ? (
+                       <video src={scheduleModal.post.video_url} className="w-16 h-16 object-cover rounded-lg" autoPlay muted loop />
+                    ) : (
+                       <div className="w-16 h-16 bg-slate-800 rounded-lg flex items-center justify-center"><Play size={16} className="text-amber-500" /></div>
+                    )
+                  ) : (
+                    <img src={scheduleModal.post.image_url} className="w-16 h-16 object-cover rounded-lg" />
+                  )}
                   <div>
                     <p className="text-xs font-bold text-amber-500 uppercase">{scheduleModal.post.type}</p>
                     <p className="text-sm text-slate-300 line-clamp-2">{scheduleModal.post.text}</p>
