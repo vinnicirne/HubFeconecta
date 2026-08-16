@@ -269,16 +269,16 @@ function TabDashboard({ posts, setPosts, showDialog }: { posts: any[], setPosts:
         } else {
           console.error("Erro no post " + i, data.error);
           
-          // Se for erro de cota ou sobrecarga do Google (503), avisa o usuário e para o loop
-          if (data.error && data.error.includes('503')) {
-            showDialog('alert', 'Aviso do Google', 'O robô de Inteligência Artificial do Google (Gemini) está com altíssima demanda neste momento e recusou a conexão. Aguarde 2 minutinhos e tente gerar novamente!');
+          // Se for erro de cota (429) ou sobrecarga do Google (503), avisa o usuário e para o loop
+          if (data.error && (data.error.includes('503') || data.error.includes('429') || data.error.includes('Too Many Requests'))) {
+            showDialog('alert', 'Aviso do Google', 'O robô de Inteligência Artificial do Google (Gemini) atingiu o limite de requisições gratuitas por minuto. Aguarde cerca de 1 a 2 minutos e tente novamente!');
             break;
           }
         }
 
-        // Aguarda 4 segundos entre as requisições para proteger a cota do Gemini
+        // Aguarda 6 segundos entre as requisições para proteger a cota do Gemini (15 RPM limite gratuito)
         if (i < 7) {
-          await new Promise(r => setTimeout(r, 4000));
+          await new Promise(r => setTimeout(r, 6000));
         }
       }
       
