@@ -78,8 +78,11 @@ A resposta deve ser ESTRITAMENTE um JSON válido.
 export async function generateContent(type: 'promessa' | 'devocional' | 'data' | 'motivacional' | 'pregacao', mediaType: 'IMAGE' | 'REEL' = 'IMAGE') {
   try {
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
-      systemInstruction: mediaType === 'REEL' ? SYSTEM_PROMPT_REEL : SYSTEM_PROMPT_IMAGE
+      model: 'gemini-3.7-flash',
+      systemInstruction: mediaType === 'REEL' ? SYSTEM_PROMPT_REEL : SYSTEM_PROMPT_IMAGE,
+      generationConfig: {
+        responseMimeType: 'application/json',
+      },
     });
 
     const topics = [
@@ -105,7 +108,7 @@ SEED DE VARIABILIDADE: ${seed}
 INSTRUÇÃO: Crie um roteiro TOTALMENTE INÉDITO seguindo todas as regras do Prompt Mestre. Não seja previsível. Não mencione estas instruções.`;
 
     const result = await model.generateContent(promptText);
-    const text = result.response.text().replace(/```json/g, '').replace(/```/g, '');
+    const text = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
     
     return JSON.parse(text);
   } catch (error) {
