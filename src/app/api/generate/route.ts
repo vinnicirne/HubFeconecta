@@ -61,15 +61,43 @@ async function getPeakHours(token: string): Promise<number[] | null> {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { type, mediaType = 'IMAGE', isAuto = false, hourIndex = 0 } = body;
+    const { type, mediaType = 'IMAGE', isAuto = false, hourIndex } = body;
 
     const scheduledHours = [8, 10, 12, 14, 16, 18, 20, 22]; // Horários em BRT
     const typesSequence = ['promessa', 'devocional', 'data', 'motivacional', 'pregacao', 'devocional', 'promessa', 'motivacional'] as const;
 
-    // Determina o tipo. Se for 'auto', escolhe aleatoriamente ou sequencial (aqui escolhe baseado no timestamp para variar).
+    // DETECÇÃO DE AUTOMAÇÃO N8N (N8N envia type: 'all' mas não envia hourIndex)
+    if (type === 'all' && hourIndex === undefined) {
+      console.log("[AUTO N8N] Iniciando geracao em lote (8 Reels) via backend...");
+      const results = [];
+      // Roda o loop 8 vezes diretamente no servidor da Vercel
+      for (let i = 0; i < scheduledHours.length; i++) {
+        try {
+          const res = await fetch(req.url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'all',
+              mediaType: 'REEL',
+              isAuto: true, // Auto agenda para o mesmo dia (já que roda a meia-noite)
+              hourIndex: i
+            })
+          });
+          const data = await res.json();
+          results.push(data);
+        } catch (e) {
+          console.error(`Erro na iteracao ${i} do n8n batch:`, e);
+        }
+      }
+      return NextResponse.json({ success: true, message: "Lote de 8 Reels gerado via n8n", results });
+    }
+
+    const currentHourIndex = hourIndex ?? 0;
+
+    // Determina o tipo. Se for 'auto', escolhe aleatoriamente ou sequencial
     let t: any = type;
     if (type === 'all') {
-      t = typesSequence[hourIndex % typesSequence.length];
+      t = typesSequence[currentHourIndex % typesSequence.length];
     } else if (type === 'auto') {
       t = typesSequence[Math.floor(Math.random() * typesSequence.length)];
     }
@@ -84,7 +112,7 @@ export async function POST(req: Request) {
       targetDate.setDate(targetDate.getDate() + 1);
     }
     
-    const hourForThisPost = scheduledHours[hourIndex % scheduledHours.length];
+    const hourForThisPost = scheduledHours[currentHourIndex % scheduledHours.length];
     targetDate.setHours(hourForThisPost + 3, 0, 0, 0); // Volta pra UTC
 
     // 1. Generate text with Gemini
