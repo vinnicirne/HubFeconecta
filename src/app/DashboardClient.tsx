@@ -143,6 +143,19 @@ export default function DashboardClient({ initialPosts }: { initialPosts: any[] 
 // --- TAB COMPONENTS ---
 
 function TabDashboard({ posts, setPosts, showDialog }: { posts: any[], setPosts: any, showDialog: any }) {
+  // Polling automático para atualizar posts que estão renderizando na VPS
+  useEffect(() => {
+    const hasPending = posts.some((p: any) => p.status === 'pending' || (p.media_type === 'REEL' && !p.video_url));
+    if (!hasPending) return;
+    
+    const interval = setInterval(async () => {
+      const { data } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
+      if (data) setPosts(data);
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, [posts, setPosts]);
+
   // Estado para controlar a semana atual do calendário (Começa na segunda-feira atual)
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const d = new Date();
