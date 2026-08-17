@@ -143,7 +143,7 @@ export async function POST(req: Request) {
     // If it's a REEL, call the VPS renderer!
     if (mediaType === 'REEL') {
       try {
-        fetch('http://209.50.229.10:3005/render', {
+        await fetch('http://209.50.229.10:3005/render', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -151,7 +151,7 @@ export async function POST(req: Request) {
             script: content.text,
             background_keyword: content.background_keyword || 'aesthetic'
           })
-        }).catch(err => console.error("VPS Render error:", err)); // fire and forget
+        });
       } catch (e) {
         console.error("VPS render request error:", e);
       }
