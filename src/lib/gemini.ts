@@ -76,7 +76,7 @@ A resposta deve ser ESTRITAMENTE um JSON válido.
 }`;
 
 export async function generateContent(type: 'promessa' | 'devocional' | 'data' | 'motivacional' | 'pregacao', mediaType: 'IMAGE' | 'REEL' = 'IMAGE') {
-  const modelsToTry = ['gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-1.5-flash'];
+  const modelsToTry = ['gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.5-flash'];
   
   const topics = [
     "a paz que excede o entendimento", 
