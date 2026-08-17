@@ -129,7 +129,7 @@ export async function POST(req: Request) {
       const searchParams = new URLSearchParams({
         type: t,
         text: content.text,
-        avatarUrl: process.env.NEXT_PUBLIC_AVATAR_URL || 'https://github.com/shadcn.png',
+        avatarUrl: `${baseUrl}/avatar.jpg`,
         name: process.env.NEXT_PUBLIC_NAME || 'DIARIODOCEU',
         username: process.env.NEXT_PUBLIC_USERNAME || '@MEUDIARIODOCEU',
       });

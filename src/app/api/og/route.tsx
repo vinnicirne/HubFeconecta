@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     const author = searchParams.get('author') || '@PRANDERSONSILVA';
     
     // System Configs
-    const avatarUrl = searchParams.get('avatarUrl') || 'https://github.com/shadcn.png'; // Fallback for dev
+    const avatarUrl = searchParams.get('avatarUrl') || 'https://hubfeconecta.vercel.app/avatar.jpg'; // Permanent Fallback
     const name = searchParams.get('name') || 'DIARIODOCEU';
     const username = searchParams.get('username') || '@MEUDIARIODOCEU';
 
