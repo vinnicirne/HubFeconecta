@@ -76,30 +76,23 @@ A resposta deve ser ESTRITAMENTE um JSON válido.
 }`;
 
 export async function generateContent(type: 'promessa' | 'devocional' | 'data' | 'motivacional' | 'pregacao', mediaType: 'IMAGE' | 'REEL' = 'IMAGE') {
-  try {
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-3.7-flash',
-      systemInstruction: mediaType === 'REEL' ? SYSTEM_PROMPT_REEL : SYSTEM_PROMPT_IMAGE,
-      generationConfig: {
-        responseMimeType: 'application/json',
-      },
-    });
+  const modelsToTry = ['gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-1.5-flash'];
+  
+  const topics = [
+    "a paz que excede o entendimento", 
+    "ansiedade e o tempo certo das coisas", 
+    "força nos momentos de fraqueza extrema",
+    "um milagre que chega quando menos se espera",
+    "o silêncio de Deus também é resposta",
+    "perdoar a si mesmo e seguir em frente",
+    "quando a tempestade finalmente passa",
+    "um recomeço inesperado e abençoado",
+    "proteção divina nos detalhes do dia a dia"
+  ];
+  const randomTopic = topics[Math.floor(Math.random() * topics.length)];
+  const seed = Math.floor(Math.random() * 1000000);
 
-    const topics = [
-      "a paz que excede o entendimento", 
-      "ansiedade e o tempo certo das coisas", 
-      "força nos momentos de fraqueza extrema",
-      "um milagre que chega quando menos se espera",
-      "o silêncio de Deus também é resposta",
-      "perdoar a si mesmo e seguir em frente",
-      "quando a tempestade finalmente passa",
-      "um recomeço inesperado e abençoado",
-      "proteção divina nos detalhes do dia a dia"
-    ];
-    const randomTopic = topics[Math.floor(Math.random() * topics.length)];
-    const seed = Math.floor(Math.random() * 1000000);
-
-    const promptText = `TIPO DE CONTEÚDO: ${type}
+  const promptText = `TIPO DE CONTEÚDO: ${type}
 TEMA PRINCIPAL: ${randomTopic}
 OBJETIVO EMOCIONAL: Despertar reflexão, consolo e fé genuína.
 ABORDAGEM: Escolha livremente uma abordagem narrativa muito criativa e original.
@@ -107,12 +100,29 @@ RESTRIÇÃO CRIATIVA: NÃO utilize a estrutura, metáfora, gancho ou conclusão 
 SEED DE VARIABILIDADE: ${seed}
 INSTRUÇÃO: Crie um roteiro TOTALMENTE INÉDITO seguindo todas as regras do Prompt Mestre. Não seja previsível. Não mencione estas instruções.`;
 
-    const result = await model.generateContent(promptText);
-    const text = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
-    
-    return JSON.parse(text);
-  } catch (error) {
-    console.error('Gemini API Error:', error);
-    throw error;
+  let lastError: any = null;
+
+  for (const modelName of modelsToTry) {
+    try {
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        systemInstruction: mediaType === 'REEL' ? SYSTEM_PROMPT_REEL : SYSTEM_PROMPT_IMAGE,
+        generationConfig: {
+          responseMimeType: 'application/json',
+        },
+      });
+
+      const result = await model.generateContent(promptText);
+      const text = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
+      
+      return JSON.parse(text);
+    } catch (error: any) {
+      console.warn(`[Gemini Fallback] Modelo ${modelName} falhou:`, error.message || error);
+      lastError = error;
+      // Tenta o próximo modelo do loop
+    }
   }
+
+  console.error('Gemini API Error: Todos os modelos falharam.', lastError);
+  throw lastError;
 }
