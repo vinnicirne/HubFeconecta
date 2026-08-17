@@ -78,7 +78,7 @@ export async function POST(req: Request) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               type: 'all',
-              mediaType: 'REEL',
+              mediaType: mediaType, // Respeita a escolha do n8n (padrão é IMAGE se não enviado)
               isAuto: true, // Auto agenda para o mesmo dia (já que roda a meia-noite)
               hourIndex: i
             })
