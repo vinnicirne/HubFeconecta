@@ -110,7 +110,7 @@ A. GANCHO (Primeiras 5 palavras)
 B. DESENVOLVIMENTO (Reflexão/verdade)
 C. VIRADA (Perspectiva diferente)
 D. FECHAMENTO (Frase forte)
-E. CTA (Chamada curta e natural, variando entre: Siga para mais mensagens, Guarde essa palavra, Continue caminhando, etc)
+E. CTA (Chamada de engajamento OBRIGATÓRIA no final. Ex: Siga a página, Deixe um Amém, Compartilhe, etc)
 
 ## 11. TAMANHO
 O roteiro completo deve possuir entre 30 e 50 palavras no máximo (cerca de 20 segundos de narração).
